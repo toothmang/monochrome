@@ -106,3 +106,24 @@ void Game::addPlayer(int playerId, bool human, int colorId)
 
     printf("player %d spawned at %.2f, %.2f\n", p.id, p.pos.x, p.pos.y);
 }
+
+// Given hue,sat,val in [0,1], return r,g,b in [0,1] as a vec3
+glm::vec3 hsv2rgb(float hue, float sat, float val) {
+    float c = val * sat;
+    float m = val - c;
+
+    int   phase   = hue * 6.0; // hue / 60 works if you want hue in [0,360)
+    float phase_r = hue * 6.0 - phase;
+
+    glm::vec3 ret(m);
+
+    if (phase == 6 ||
+        phase == 0) { ret.r += c;  ret.g +=       phase_r  * c; }
+    if (phase == 1) { ret.g += c;  ret.r += (1. - phase_r) * c; }
+    if (phase == 2) { ret.g += c;  ret.b +=       phase_r  * c; }
+    if (phase == 3) { ret.b += c;  ret.g += (1. - phase_r) * c; }
+    if (phase == 4) { ret.b += c;  ret.r +=       phase_r  * c; }
+    if (phase == 5) { ret.r += c;  ret.b += (1. - phase_r) * c; }
+
+    return ret;
+}
