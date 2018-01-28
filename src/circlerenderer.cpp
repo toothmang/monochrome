@@ -6,7 +6,7 @@
 
 
 
-int CircleRenderer::roundness = 8;
+int CircleRenderer::roundness = 16;
 
 CircleRenderer::~CircleRenderer()
 {
@@ -84,7 +84,6 @@ bool CircleRenderer::init()
     indices.clear();
 
     vertices.push_back(glm::vec2(0.0f));
-    indices.push_back(0);
 
     float theta = glm::two_pi<float>() / roundness;
 
@@ -93,8 +92,18 @@ bool CircleRenderer::init()
         float t = theta * i;
 
         vertices.push_back(glm::vec2(glm::cos(t), glm::sin(t)));
+        //indices.push_back(0);
         indices.push_back(i + 1);
-        indices.push_back(i + 2);
+
+        if (i == roundness - 1)
+        {
+            indices.push_back(1);
+        }
+        else
+        {
+            indices.push_back(i + 2);
+        }
+        
     }
 
     glGenBuffers(1, &vboHandle);
@@ -142,11 +151,11 @@ void CircleRenderer::render(const glm::vec2 & p, float radius, const glm::vec4 &
     // Render command lists
     glBindBuffer(GL_ARRAY_BUFFER, vboHandle);
     glEnableVertexAttribArray(attribPosLoc);
-    glVertexAttribPointer(attribPosLoc, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (GLvoid*)0);
+    glVertexAttribPointer(attribPosLoc, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementsHandle);
 
-    glDrawElements(GL_TRIANGLE_FAN, roundness + 1, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLE_FAN, indices.size(), GL_UNSIGNED_INT, 0);
 
     glDisableVertexAttribArray(attribPosLoc);
 
