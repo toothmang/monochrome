@@ -28,10 +28,10 @@ void Player::update()
                 (float)SDL_GameControllerGetAxis(client.controller, SDL_CONTROLLER_AXIS_RIGHTY) /  32767, 
                 -1.0f, 1.0f);
 
-
             input.move = glm::vec2(lx, ly);
             input.heading = glm::atan(rx, ry);
-        }    
+        }
+        
     }
     else
     {
