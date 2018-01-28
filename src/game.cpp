@@ -15,7 +15,7 @@ glm::vec4 genColor()
 }
 
 void Game::begin()
-{   
+{
     gameBeginTime = SDL_GetTicks();
 
     printf("%s called! Game starting at tick %d\n", __FUNCTION__, gameBeginTime);
@@ -29,7 +29,7 @@ void Game::begin()
         // while (badColor)
         // {
         //     bc = genColor();
-        //     badColor = std::any_of(colors.begin(), colors.end(), 
+        //     badColor = std::any_of(colors.begin(), colors.end(),
         //         [this, bc](const glm::vec4 & v)
         //         {
         //             return (bc - v).length() < colorTolerance;

@@ -9,6 +9,8 @@
 
 #include "circlerenderer.h"
 
+#include "messages.hpp"
+
 #include <stdio.h>
 
 
@@ -28,7 +30,7 @@ bool monochrome_client::init()
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     SDL_GetCurrentDisplayMode(0, &current);
-    
+
     SDL_CreateWindowAndRenderer(width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE , &window, &renderer);
     SDL_SetWindowTitle(window, "Monochrome - Winning Colors!");
     glcontext = SDL_GL_CreateContext(window);
@@ -129,7 +131,7 @@ void monochrome_client::updateState(State newState)
             break;
     }
 
-    
+
 }
 
 void monochrome_client::updateLoading()
@@ -167,7 +169,7 @@ void monochrome_client::updatePlaying()
 void monochrome_client::updateVictory()
 {
     ImGui::Begin("Victory screen!");
-    
+
     if (ImGui::Button("End"))
     {
         updateState(LoadingScreen);
@@ -204,7 +206,7 @@ void monochrome_client::renderTopMenu()
 {
     ImGui::BeginMainMenuBar();
 
-    ImGui::Text("Monochrome! Application average %.3f ms/frame (%.1f FPS)", 
+    ImGui::Text("Monochrome! Application average %.3f ms/frame (%.1f FPS)",
         1000.0f / ImGui::GetIO().Framerate,
         ImGui::GetIO().Framerate);
 
@@ -226,10 +228,10 @@ void monochrome_client::renderPlayer(const Player & player)
     static auto pi  = glm::pi<float>();
     static auto pih = glm::half_pi<float>();
 
-    SDL_SetRenderDrawColor(renderer, 
-        255, 
+    SDL_SetRenderDrawColor(renderer,
         255,
-        255, 
+        255,
+        255,
         SDL_ALPHA_OPAQUE);
 
     //drew  28 lines with   4x4  circle with precision of 150 0ms
@@ -294,14 +296,14 @@ void monochrome_client::renderPlayer(const Player & player)
 
 void monochrome_client::renderGame()
 {
-    SDL_SetRenderDrawColor(renderer, 
-        255, 
+    SDL_SetRenderDrawColor(renderer,
         255,
-        255, 
+        255,
+        255,
         255);
 
     auto & cr = CircleRenderer::get();
-    
+
     for(const auto & player : game->players)
     {
         cr.render(player.pos, player.size, game->colors[player.colorId]);
@@ -346,13 +348,13 @@ void monochrome_client::newgame()
     {
         player = game->addHuman();
     }
-    
+
 }
 bool done = false;
 
 void mainLoop();
 
-int main(int argc, char **argv) 
+int main(int argc, char **argv)
 {
     if (!monochrome_client::get().init())
     {

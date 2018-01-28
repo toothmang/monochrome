@@ -31,7 +31,7 @@ class Game
         ~Game() {}
 
         void begin();
-        
+
         void update();
 
         void constrainPos(glm::vec2 & pos, const float & radius)
@@ -49,3 +49,5 @@ class Game
 
         void addPlayer(int playerId, bool human, int colorId);
 };
+
+glm::vec3 hsv2rgb(float hue, float sat, float val);

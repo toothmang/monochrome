@@ -166,7 +166,7 @@ bool CircleRenderer::init()
         {
             indices.push_back(i + 2);
         }
-        
+
     }
 
     glGenBuffers(1, &vboHandle);
@@ -205,7 +205,7 @@ void CircleRenderer::render(const glm::vec2 & p, float radius, const glm::vec4 &
     };
 
     glUseProgram(shaderHandle);
-    
+
     glUniformMatrix4fv(uniformMVPLoc, 1, GL_FALSE, &mvp[0][0]);
     glUniform2fv(uniformCenterLoc, 1, &p[0]);
     glUniform1f(uniformRadiusLoc, radius);
