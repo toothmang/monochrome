@@ -41,11 +41,30 @@ void Game::begin()
 
         addPlayer(numPlayers++, false, colors.size() - 1);
     }
+
+    colorStats.resize(colors.size());
+}
+
+void Game::end()
+{
+    gameEndTime = SDL_GetTicks();
+
+    finished = true;
+
+    victorStats.clear();
+
+    for(auto & ms : matchStats)
+    {
+        victorStats.push_back(ms[winningColorId]);
+    }
 }
 
 void Game::update()
 {
+    if (finished) return;
+
     auto t = SDL_GetTicks();
+    auto dt = t - lastUpdateTime;
 
     deltaTime = (float)(t - lastUpdateTime) / 1000.0f;
 
@@ -78,22 +97,50 @@ void Game::update()
 
         for(auto & p : players)
         {
-            if (bulletCollide(p, b.second))
+            if (bulletCollide(p, b.second) && !finished)
             {
                 deadBullets.push_back(b.first);
-                // printf("Bullet %d (from player %d), color %d collided with player %d, color %d\n",
-                //     b.first, b.second.playerId, b.second.colorId, p.id, p.colorId);
                 p.colorId = b.second.colorId;
             }
         }
     }
+
+    if ((t - lastStatTime) > statInterval)
+    {
+        for(int i = 0; i < colorStats.size(); i++)
+        {
+            auto & cs = colorStats[i];
+            cs.time = t;
+            cs.index = i;
+            cs.players = 0;
+            cs.avgPos = {0.0f, 0.0f};
+        }
+
+        for(auto & p : players)
+        {
+            auto & cs = colorStats[p.colorId];
+
+            cs.players++;
+            cs.avgPos += p.pos;
+        }
+
+        for(auto & cs : colorStats)
+        {
+            cs.avgPos = cs.avgPos * (1.0f / cs.players);
+        }
+        matchStats.push_back(colorStats);
+
+        lastStatTime = t;
+    }
+
+    
 
     if (players.empty() || lastUpdateTime - gameBeginTime > roundLength)
     {
         printf("Players empty or time ran out! Finishing game...\n");
         finished = true;
     }
-    else
+    else if (!finished)
     {
         bool sameColor = true;
         int col = players[0].colorId;
@@ -111,6 +158,7 @@ void Game::update()
 
         if (finished)
         {
+            winningColorId = col;
             printf("All %d player colors the same! Finishing game...\n", players.size());
         }
     }
@@ -158,7 +206,6 @@ Player * Game::addHuman(glm::vec4 color)
 
 void Game::addPlayer(int playerId, bool human, int colorId)
 {
-    printf("Adding %s %d with color id %d\n", human ? "humanoid" : "bot", numPlayers, colorId);
     players.push_back(Player(this, glm::linearRand(glm::vec2(0.0f), mapSize),
         playerId, human, colorId, playerSize, playerDonut));
 
@@ -169,7 +216,7 @@ void Game::addPlayer(int playerId, bool human, int colorId)
 
 unsigned int Game::requestBullet(const Player * p)
 {
-    if (!p) return 0;
+    if (!p || finished || bullets.size() >= maxBullets) return 0;
 
     auto timeDiff = lastUpdateTime - p->lastFireTime;
     if (timeDiff > p->fireRate)
@@ -180,4 +227,11 @@ unsigned int Game::requestBullet(const Player * p)
     }
 
     return 0;
+}
+
+size_t Game::getSize()
+{
+    return (sizeof(Bullet) * bullets.size())
+        + (sizeof(Player) * players.size())
+        + (sizeof(ColorStat) * players.size() * matchStats.size());
 }

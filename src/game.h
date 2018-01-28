@@ -12,13 +12,26 @@
 class Game
 {
     public:
+        class ColorStat
+        {
+            public:
+                unsigned int time = 0;
+                int index = 0;
+                int players = 0;
+                glm::vec2 avgPos;
+        };
+
         glm::vec2 mapSize;
         std::vector<Player> players;
         std::vector<glm::vec4> colors;
         std::map<playerID_t, uint16_t> player_lookup; // playerID -> index in players
         std::map<int, Bullet> bullets;
-
+        int maxBullets = 10000;
         std::vector<int> deadBullets;
+
+        std::vector<ColorStat> colorStats, victorStats;
+        std::vector<std::vector<ColorStat>> matchStats;
+        unsigned int lastStatTime = 0, statInterval = 250;
 
         float playerSize = 15.0f;
         float playerDonut = 6.0f;
@@ -32,7 +45,9 @@ class Game
 
         bool finished = false;
 
-        unsigned int gameBeginTime = 0;
+        int winningColorId = 0;
+
+        unsigned int gameBeginTime = 0, gameEndTime = 0;
 
         unsigned int lastUpdateTime = 0;
 
@@ -48,6 +63,8 @@ class Game
 
         void begin();
 
+        void end();
+        
         void update();
 
         bool bulletCollide(const Player & p, const Bullet & b);
@@ -75,4 +92,6 @@ class Game
         void addPlayer(int playerId, bool human, int colorId);
 
         unsigned int requestBullet(const Player * p);
+
+        size_t getSize();
 };

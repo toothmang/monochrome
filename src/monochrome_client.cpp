@@ -10,7 +10,8 @@
 #include "circlerenderer.h"
 
 #include <stdio.h>
-
+#include <algorithm>
+#include <functional>
 
 ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
@@ -120,9 +121,12 @@ void monochrome_client::updateState(State newState)
         case LoadingScreen:
             break;
         case Playing:
+            printf("Starting to play!\n");
             newgame();
             break;
         case Victory:
+            printf("Going to victory!!\n");
+            game->end();
             victoryTime = SDL_GetTicks();
             break;
         default:
@@ -178,12 +182,11 @@ void monochrome_client::updateLoading()
     if (ImGui::Button("PLAY"))
     {
         updateState(Playing);
-        printf("Starting to play!\n");
     }
 
     ImGui::NewLine();
 
-    ImGui::Text("Left stick to move, right stick to aim, any button to fire");
+    ImGui::Text("Left stick to move, right stick to aim/fire");
 
     ImGui::End();
 }
@@ -200,6 +203,8 @@ void monochrome_client::updatePlaying()
 
 void monochrome_client::updateVictory()
 {
+    game->update();
+
     auto victoryElapsed = SDL_GetTicks() - victoryTime;
     victoryRemaining = victoryLength - victoryElapsed;
 
@@ -222,7 +227,7 @@ void monochrome_client::render()
             renderLoading();
             break;
         case Playing:
-            renderGame();
+            renderPlaying();
             break;
         case Victory:
             renderVictory();
@@ -250,11 +255,10 @@ void monochrome_client::renderLoading()
 
 }
 
-void monochrome_client::renderGame()
+void monochrome_client::renderPlaying()
 {
     auto & cr = CircleRenderer::get();
 
-    static float playerMinRadius = 18.0f;
     static float offsetScale = 0.4f;
 
     for(const auto & p : game->players)
@@ -280,44 +284,106 @@ void monochrome_client::renderGame()
         cr.render(b.second.pos, game->colors[b.second.colorId], b.second.size);
     }
 
-    ImGui::Begin("PLAYTIME!");
-
-    auto diff = game->lastUpdateTime - game->gameBeginTime;
-    auto rem = (game->roundLength - diff) * 0.001f;
-
-    ImGui::Text("Time remaining: %.2f sec", rem);
-
-    ImGui::SliderFloat("Offset scale", &offsetScale, 0.0f, 1.0f);
-
-    for(auto & p : game->players)
+    if (!game->finished)
     {
-        if (p.isHuman)
+        ImGui::Begin("PLAYTIME!");
+
+        auto diff = game->lastUpdateTime - game->gameBeginTime;
+        auto rem = (game->roundLength - diff) * 0.001f;
+
+        ImGui::Text("Time remaining: %.2f sec", rem);
+
+        ImGui::SliderFloat("Offset scale", &offsetScale, 0.0f, 1.0f);
+
+        ImGui::Text("Player pos: %.2f, %.2f. Heading: %.2f, %.2f", player->pos.x, player->pos.y, 
+            player->input.aim.x, player->input.aim.y);
+
+        // for(auto & p : game->players)
+        // {
+        //     if (p.isHuman)
+        //     {
+        //         ImGui::Text("Player pos: %.2f, %.2f. Heading: %.2f, %.2f", player->pos.x, player->pos.y, 
+        //             player->input.aim.x, player->input.aim.y);
+        //         break;
+        //     }
+        // }
+
+        if (ImGui::Button("STAHP"))
         {
-            ImGui::Text("Player pos: %.2f, %.2f. Heading: %.2f, %.2f", p.pos.x, p.pos.y,
-                p.input.aim.x, p.input.aim.y);
-
+            updateState(Victory);
         }
-    }
 
-    if (ImGui::Button("STAHP"))
-    {
-        updateState(Victory);
-        printf("Going to victory!!\n");
-    }
+        if (ImGui::CollapsingHeader("Stats"))
+        {
+            int numBullets = game->bullets.size();
 
-    ImGui::End();
+            ImGui::Text("Bullet count: %d", numBullets);
+
+            // Try to estimate memory usage?
+            auto memUsage = game->getSize();
+
+            auto mb = (double)memUsage / (1024 * 1024);
+
+            ImGui::Text("Memory usage: %.2f MB", mb);
+
+
+            auto stats = game->colorStats;
+
+            std::sort(stats.begin(), stats.end(), [](const Game::ColorStat &a, const Game::ColorStat & b)
+            {
+                if (a.players == b.players)
+                {
+                    return a.index > b.index;
+                }
+                else
+                {
+                    return a.players > b.players;
+                }
+            });
+
+            for(auto & s : stats)
+            {
+                if (s.players == 0) break;
+                ImGui::Text("Color %d: Players %d, Center %.2f, %.2f",
+                    s.index, s.players, s.avgPos.x, s.avgPos.y);
+            }
+        }
+
+        ImGui::End();
+    }
 }
 
 void monochrome_client::renderVictory()
 {
+    renderPlaying();
+
     ImGui::Begin("Victory screen!");
 
+    ImGui::Text("Match length: %.2f", (game->gameEndTime - game->gameBeginTime) * 0.001f);
     ImGui::Text("Time to next round: %.2f", victoryRemaining * 0.001f);
 
     if (ImGui::Button("End"))
     {
         updateState(LoadingScreen);
     }
+
+    // ImGui::PlotLines("Round plot", (float*)game->victorStats.data(), (int)game->victorStats.size(),
+    //     sizeof(unsigned int) + sizeof(int), nullptr, FLT_MAX, FLT_MAX, ImVec2(500, 500), sizeof(Game::ColorStat));
+
+    ImGui::NewLine();
+    ImGui::Text("Winning team population over time");
+    ImGui::PlotLines("", 
+        [](void *data, int idx)
+        {
+            if (auto vs = (Game::ColorStat*)data)
+            {
+                return (float)vs[idx].players;
+            }
+            return 0.0f;
+        }, 
+        (void*)game->victorStats.data(), (int)game->victorStats.size(), 0, nullptr, FLT_MAX, FLT_MAX, 
+        ImVec2(500, 500));
+
     ImGui::End();
 }
 

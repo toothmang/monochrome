@@ -17,6 +17,8 @@ void Player::update()
 
         if (client.controller)
         {
+            lastInput = input;
+
             float lx = glm::clamp(
                 (float)SDL_GameControllerGetAxis(client.controller, SDL_CONTROLLER_AXIS_LEFTX) /  32767, 
                 -1.0f, 1.0f);
@@ -39,11 +41,12 @@ void Player::update()
     }
     else
     {
-        auto currentTime = SDL_GetTicks();
+        auto currentTime = game->lastUpdateTime;
         auto diff = currentTime - lastUpdate;
 
         if (diff > botWait)
         {
+            lastInput = botInput;
             // Aim at nearest non-color player
             glm::vec2 minDir = {0.0f, 0.0f};
             float minDist = FLT_MAX;
@@ -62,20 +65,37 @@ void Player::update()
 
             if (glm::length(minDir) > 0.0f)
             {
-                input.aim = minDir;
+                botInput.aim = minDir;
             }
             else
             {
-                input.aim = glm::diskRand(1.0f);
+                botInput.aim = glm::diskRand(1.0f);
             }
 
-            input.move = glm::diskRand(1.0f);
-            input.firing = glm::linearRand(0.0f, 1.0f) > 0.5f;
+            // auto teamDiff = game->colorStats[colorId].avgPos - pos;
+            // auto teamDist = glm::length(teamDiff);
+
+            // if (teamDist > 10.0 * size)
+            // {
+            //     botInput.move = glm::normalize(teamDiff);
+            // }
+            // else
+            {
+                botInput.move = glm::diskRand(1.0f);
+            }
+
             
+            botInput.firing = glm::linearRand(0.0f, 1.0f) > 0.5f;
 
             botWait = glm::linearRand(botMin, botMax);
             lastUpdate = currentTime;
         }
+
+        float t = (float)diff / botWait;
+
+        input.move = glm::mix(lastInput.move, botInput.move, t);
+        input.aim = glm::mix(lastInput.aim, botInput.aim, t);
+        input.firing = botInput.firing;
     }
 
     if (glm::length(input.move) < 0.2f)

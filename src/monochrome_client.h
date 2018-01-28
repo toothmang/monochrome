@@ -94,7 +94,7 @@ class monochrome_client
         void renderPlayer(const Player & p);
 
         // renders game if playing
-        void renderGame();
+        void renderPlaying();
 
         void renderVictory();
 

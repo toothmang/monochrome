@@ -1,5 +1,5 @@
 CC = em++
-OL = -O2
+OL = -O2 -s TOTAL_MEMORY=536870912
 CPPVER = -std=c++14
 
 clean:

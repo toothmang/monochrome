@@ -31,14 +31,14 @@ class Player
 
         unsigned int lastUpdate = 0;
         unsigned int lastFireTime = 0;
-
-        unsigned int botMin = 1000, botMax = 2000;
+        
+        unsigned int botMin = 100, botMax = 500;
         unsigned int botWait = 0;
 
         static float maxSpeed;
         static unsigned int fireRate;
 
-        PlayerInput input;
+        PlayerInput input, lastInput, botInput;
 
         Player(Game * g, const glm::vec2 & p, int _id, bool human, int colId,
             float _size, float _minSize = 0.0f)
