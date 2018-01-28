@@ -3,6 +3,7 @@
 #include "player.h"
 #include "bullet.h"
 #include "gamestart.h"
+#include "messages.hpp"
 
 #include "glm/vec2.hpp"
 #include <vector>
@@ -14,6 +15,7 @@ class Game
         glm::vec2 mapSize;
         std::vector<Player> players;
         std::vector<glm::vec4> colors;
+        std::map<playerID_t, uint16_t> player_lookup; // playerID -> index in players
         std::map<int, Bullet> bullets;
 
         std::vector<int> deadBullets;
@@ -38,14 +40,14 @@ class Game
 
         float deltaTime = 0.0f;
 
-        Game(const GameStart & gs) : numBots(gs.numBots), playerSize(gs.playerSize), 
+        Game(const GameStart & gs) : numBots(gs.numBots), playerSize(gs.playerSize),
             playerDonut(gs.playerDonut), mapSize(gs.size)
         {}
 
         ~Game() {}
 
         void begin();
-        
+
         void update();
 
         bool bulletCollide(const Player & p, const Bullet & b);

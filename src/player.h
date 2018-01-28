@@ -1,6 +1,7 @@
 #pragma once
 
 #include "glm/glm.hpp"
+#include "messages.hpp"
 
 class Game;
 
@@ -23,13 +24,14 @@ class Player
         glm::vec2 pos = {0.0f, 0.0f};
         glm::vec2 vel = {0.0f, 0.0f};
         glm::vec2 headingPos = {0.0f, 0.0f};
+        timestamp_t timestamp = 0;
         float size = 15.0f;
         float minSize = 0.0f;
-        
+
 
         unsigned int lastUpdate = 0;
         unsigned int lastFireTime = 0;
-        
+
         unsigned int botMin = 1000, botMax = 2000;
         unsigned int botWait = 0;
 
@@ -41,7 +43,7 @@ class Player
         Player(Game * g, const glm::vec2 & p, int _id, bool human, int colId,
             float _size, float _minSize = 0.0f)
             : game(g), pos(p), id(_id), isHuman(human), colorId(colId),
-            size(_size), minSize(_minSize)
+            size(_size), minSize(_minSize), timestamp(0.)
         {
 
         }

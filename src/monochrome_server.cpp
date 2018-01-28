@@ -126,7 +126,7 @@ void deserialize(std::string message)
         if (lookup == game->player_lookup.end()) {
             playerIndex = game->players.size();
             //game->addPlayer(pID, true, cID);
-            game->players.push_back(Player(game, pID, true, cID));
+            game->players.push_back(Player(game, position, pID, true, cID, 30., 15.));
         } else {
             playerIndex = lookup->second;
         }

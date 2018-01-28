@@ -28,7 +28,7 @@ bool monochrome_client::init()
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     SDL_GetCurrentDisplayMode(0, &current);
-    
+
     SDL_CreateWindowAndRenderer(width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE , &window, &renderer);
     SDL_SetWindowTitle(window, "Monochrome - Winning Colors!");
     glcontext = SDL_GL_CreateContext(window);
@@ -155,7 +155,7 @@ void monochrome_client::updateLoading()
 {
     ImGui::Begin("LOADING SCREEN");
     ImGui::InputText("Enter name", playerName, 1024);
-    
+
     ImGui::Checkbox("Custom color", &gs.usePlayerColor);
 
     if (gs.usePlayerColor)
@@ -238,7 +238,7 @@ void monochrome_client::renderTopMenu()
 {
     ImGui::BeginMainMenuBar();
 
-    ImGui::Text("Monochrome! Application average %.3f ms/frame (%.1f FPS)", 
+    ImGui::Text("Monochrome! Application average %.3f ms/frame (%.1f FPS)",
         1000.0f / ImGui::GetIO().Framerate,
         ImGui::GetIO().Framerate);
 
@@ -256,14 +256,17 @@ void monochrome_client::renderGame()
 
     static float playerMinRadius = 18.0f;
     static float offsetScale = 0.4f;
-    
+
     for(const auto & p : game->players)
     {
+        glm::vec4 color(0., 0., 0., 1.);
+        if (p.colorId < game->colors.size()) color = game->colors[p.colorId];
+
         // Render a sphere for the player position
-        cr.render(p.pos, game->colors[p.colorId], p.size, p.minSize);
+        cr.render(p.pos, color, p.size, p.minSize);
 
         // And also render a smaller sphere for their heading
-        cr.render(p.headingPos, game->colors[p.colorId], p.size * offsetScale);
+        cr.render(p.headingPos, color, p.size * offsetScale);
 
         // If human, highlight them a bit
         if (p.isHuman)
@@ -290,9 +293,9 @@ void monochrome_client::renderGame()
     {
         if (p.isHuman)
         {
-            ImGui::Text("Player pos: %.2f, %.2f. Heading: %.2f, %.2f", p.pos.x, p.pos.y, 
+            ImGui::Text("Player pos: %.2f, %.2f. Heading: %.2f, %.2f", p.pos.x, p.pos.y,
                 p.input.aim.x, p.input.aim.y);
-            
+
         }
     }
 
@@ -310,7 +313,7 @@ void monochrome_client::renderVictory()
     ImGui::Begin("Victory screen!");
 
     ImGui::Text("Time to next round: %.2f", victoryRemaining * 0.001f);
-    
+
     if (ImGui::Button("End"))
     {
         updateState(LoadingScreen);
@@ -322,7 +325,7 @@ bool done = false;
 
 void mainLoop();
 
-int main(int argc, char **argv) 
+int main(int argc, char **argv)
 {
     if (!monochrome_client::get().init())
     {
