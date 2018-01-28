@@ -7,6 +7,8 @@
 
 #include "glm/gtc/constants.hpp"
 
+#include "circlerenderer.h"
+
 #include <stdio.h>
 
 
@@ -219,6 +221,8 @@ void monochrome_client::renderLoading()
 
 void monochrome_client::renderPlayer(const Player & player)
 {
+
+
     static auto pi  = glm::pi<float>();
     static auto pih = glm::half_pi<float>();
 
@@ -295,10 +299,13 @@ void monochrome_client::renderGame()
         255,
         255, 
         255);
+
+    auto & cr = CircleRenderer::get();
     
     for(const auto & player : game->players)
     {
-        renderPlayer(player);
+        cr.render(player.pos, player.size, game->colors[player.colorId]);
+        //renderPlayer(player);
     }
 
 
@@ -355,7 +362,7 @@ int main(int argc, char **argv)
 
     #ifdef __EMSCRIPTEN__
     printf("emscripten setting main loop!\n");
-    emscripten_set_main_loop(mainLoop, 60, 1);
+    emscripten_set_main_loop(mainLoop, 0, 1);
 #else
     while (!done)
     {
