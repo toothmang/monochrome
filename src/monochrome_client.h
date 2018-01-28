@@ -9,7 +9,10 @@
 
 #include "imgui.h"
 
+#include <vector>
+
 class Game;
+class Player;
 
 class monochrome_client
 {
@@ -25,12 +28,13 @@ class monochrome_client
             LoadingScreen,
             Playing,
             Victory
-        }
+        };
 
         State state;
 
-        std::vector<char> playerName;
+        char playerName[1024] = "Jimothy";
         ImVec4 playerColor;
+        bool usePlayerColor = false;
 
         Player * player = nullptr;
         Game * game = nullptr;
@@ -59,6 +63,8 @@ class monochrome_client
         // Main update loop
         void update();
 
+        void updateState(State newState);
+
         // update function for loading screen state
         void updateLoading();
         // update function for gameplay update
@@ -69,10 +75,12 @@ class monochrome_client
         // renders game and ui
         void render();
 
-        void renderLoading();
-
         // renders top menu bar
         void renderTopMenu();
+
+        void renderLoading();
+
+        void renderPlayer(const Player & p);
 
         // renders game if playing
         void renderGame();
@@ -85,5 +93,5 @@ class monochrome_client
         
 
     protected:
-        monochrome_client();
+        monochrome_client() {}
 };

@@ -1,6 +1,8 @@
 #include "player.h"
+#include "game.h"
 
 #include "glm/gtc/random.hpp"
+#include "glm/gtc/constants.hpp"
 
 #include "monochrome_client.h"
 
@@ -38,14 +40,32 @@ void Player::update()
 
         if (diff > botWait)
         {
+            static auto pi = glm::pi<float>();
             input.move = glm::diskRand(1.0f);
-            input.heading = glm::gtx::random(-glm::pi(), glm::pi());
+            input.heading = glm::linearRand(-pi, pi);
 
-            botWait = glm::gtx::random(botMin, botMax);
+            botWait = glm::linearRand(botMin, botMax);
             lastUpdate = currentTime;
         }
     }
 
-    pos += input.move;
+    if (input.move.length() < 0.1f)
+    {
+        input.move = {0.0f, 0.0f};
+    }
+
+    vel = input.move * maxSpeed * game->deltaTime;
+    pos = pos + vel;
     heading = input.heading;
+
+    // if (isHuman)
+    // {
+    //     printf("input move: %.2f, %.2f\tvelocity: %.2f, %.2f\tpos: %.2f, %.2f, heading: %.2f\n", 
+    //         input.move.x, input.move.y,
+    //         vel.x, vel.y,
+    //         pos.x, pos.y,
+    //         input.heading);
+    // }
+
+    
 }

@@ -5,6 +5,8 @@
 
 #include "imgui_impl_sdl.h"
 
+#include "glm/gtc/constants.hpp"
+
 #include <stdio.h>
 
 
@@ -29,6 +31,8 @@ bool monochrome_client::init()
     SDL_SetWindowTitle(window, "Monochrome - Winning Colors!");
     glcontext = SDL_GL_CreateContext(window);
 
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
     if (!ImGui_ImplSdl_Init(window))
     {
         printf("imgui failed to init!\n");
@@ -39,7 +43,7 @@ bool monochrome_client::init()
     SDL_GameControllerEventState(SDL_QUERY);
     SDL_JoystickEventState(SDL_QUERY);
 
-    var numJoysticks = SDL_NumJoysticks();
+    int numJoysticks = SDL_NumJoysticks();
 
     //Check for joysticks
     if( numJoysticks < 1 )
@@ -90,29 +94,55 @@ void monochrome_client::update()
     switch(state)
     {
         case LoadingScreen:
-            loadingScreen();
+            updateLoading();
             break;
         case Playing:
-            playing();
+            updatePlaying();
             break;
         case Victory:
-            victory();
+            updateVictory();
             break;
         default:
             break;
     }
 }
 
+void monochrome_client::updateState(State newState)
+{
+    if (state == newState) return;
+
+    state = newState;
+
+    switch(state)
+    {
+        case LoadingScreen:
+            break;
+        case Playing:
+            newgame();
+            game->begin();
+            break;
+        case Victory:
+            break;
+        default:
+            break;
+    }
+
+    
+}
+
 void monochrome_client::updateLoading()
 {
     ImGui::Begin("LOADING SCREEN");
-    ImGui::InputText("Enter name", buf, 1024);
-    ImGui::ColorEdit3("Choose color", (float*)&color);
+    ImGui::InputText("Enter name", playerName, 1024);
+    if (ImGui::ColorEdit3("Choose color", (float*)&playerColor))
+    {
+        usePlayerColor = true;
+    }
 
     if (ImGui::Button("PLAY"))
     {
-        )
-        state = Playing;
+        updateState(Playing);
+        printf("Starting to play!\n");
     }
 
     ImGui::NewLine();
@@ -128,7 +158,7 @@ void monochrome_client::updatePlaying()
 
     if (game->finished)
     {
-        state = Victory;
+        updateState(Victory);
     }
 }
 
@@ -138,7 +168,7 @@ void monochrome_client::updateVictory()
     
     if (ImGui::Button("End"))
     {
-        state = LoadingScreen;
+        updateState(LoadingScreen);
     }
     ImGui::End();
 }
@@ -164,6 +194,8 @@ void monochrome_client::render()
         default:
             break;
     }
+
+    SDL_RenderPresent(renderer);
 }
 
 void monochrome_client::renderTopMenu()
@@ -177,28 +209,113 @@ void monochrome_client::renderTopMenu()
     ImGui::EndMainMenuBar();
 }
 
+void monochrome_client::renderLoading()
+{
+    int w, h, isfs;
+    emscripten_get_canvas_size(&w, &h, &isfs);
+    SDL_Rect rect = { 0, 0, w, h };
+    SDL_RenderFillRect(renderer, &rect);
+}
+
+void monochrome_client::renderPlayer(const Player & player)
+{
+    static auto pi  = glm::pi<float>();
+    static auto pih = glm::half_pi<float>();
+
+    SDL_SetRenderDrawColor(renderer, 
+        255, 
+        255,
+        255, 
+        SDL_ALPHA_OPAQUE);
+
+    //drew  28 lines with   4x4  circle with precision of 150 0ms
+    //drew 132 lines with  25x14 circle with precision of 150 0ms
+    //drew 152 lines with 100x50 circle with precision of 150 3ms
+    const int prec = 27; // precision value; value of 1 will draw a diamond, 27 makes pretty smooth circles.
+    float theta = 0;     // angle that will be increased each loop
+
+    //starting point
+    int ps = player.size;
+    int psh = ps / 2;
+    int x  = (float)ps * glm::cos(theta);//start point
+    int y  = (float)ps * glm::sin(theta);//start point
+    int x0 = player.pos.x;
+    int y0 = player.pos.y;
+    int x1 = x;
+    int y1 = y;
+
+    //printf("%d %d          %d %d\n", x0, y0, x, y);
+
+    static SDL_Rect playerRect;
+
+    playerRect.x = x0 - ps;
+    playerRect.y = y0 - ps;
+    playerRect.w = ps;
+    playerRect.h = ps;
+
+    SDL_RenderFillRect(renderer, &playerRect);
+
+    return;
+
+    //repeat until theta >= 90;
+    float step = pih/(float)prec; // amount to add to theta each time (degrees)
+    for(theta=step;  theta <= pih;  theta+=step)//step through only a 90 arc (1 quadrant)
+    {
+        //get new point location
+        x1 = (float)player.size * glm::cos(theta) + 0.5; //new point (+.5 is a quick rounding method)
+        y1 = (float)player.size * glm::sin(theta) + 0.5; //new point (+.5 is a quick rounding method)
+
+        //draw line from previous point to new point, ONLY if point incremented
+        if( (x != x1) || (y != y1) )//only draw if coordinate changed
+        {
+            SDL_RenderDrawLine(renderer, x0 + x, y0 - y,    x0 + x1, y0 - y1 );//quadrant TR
+            SDL_RenderDrawLine(renderer, x0 - x, y0 - y,    x0 - x1, y0 - y1 );//quadrant TL
+            SDL_RenderDrawLine(renderer, x0 - x, y0 + y,    x0 - x1, y0 + y1 );//quadrant BL
+            SDL_RenderDrawLine(renderer, x0 + x, y0 + y,    x0 + x1, y0 + y1 );//quadrant BR
+        }
+        //save previous points
+        x = x1;//save new previous point
+        y = y1;//save new previous point
+    }
+    //arc did not finish because of rounding, so finish the arc
+    if(x!=0)
+    {
+        x=0;
+        SDL_RenderDrawLine(renderer, x0 + x, y0 - y,    x0 + x1, y0 - y1 );//quadrant TR
+        SDL_RenderDrawLine(renderer, x0 - x, y0 - y,    x0 - x1, y0 - y1 );//quadrant TL
+        SDL_RenderDrawLine(renderer, x0 - x, y0 + y,    x0 - x1, y0 + y1 );//quadrant BL
+        SDL_RenderDrawLine(renderer, x0 + x, y0 + y,    x0 + x1, y0 + y1 );//quadrant BR
+    }
+}
+
 void monochrome_client::renderGame()
 {
-    //SDL_Surface *screen = SDL_SetVideoMode(width, height, 32, SDL_SWSURFACE);
-    // boxColor(screen, 0, 0, width, height, 0xff);
+    SDL_SetRenderDrawColor(renderer, 
+        255, 
+        255,
+        255, 
+        255);
+    
+    for(const auto & player : game->players)
+    {
+        renderPlayer(player);
+    }
 
-    // boxColor(screen, 0, 0, 98, 98, 0xff0000ff);
-    // boxRGBA(screen, 100, 0, 198, 98, 0, 0, 0xff, 0xff);
-    // // check that the x2 > x1 case is handled correctly
-    // boxColor(screen, 298, 98, 200, 0, 0x00ff00ff);
-    // boxColor(screen, 398, 98, 300, 0, 0xff0000ff);
 
-    // rectangleColor(screen, 0, 100, 98, 198, 0x000ffff);
-    // rectangleRGBA(screen, 100, 100, 198, 198, 0xff, 0, 0, 0xff);
+    ImGui::Begin("PLAYTIME!");
 
-    // ellipseColor(screen, 300, 150, 99, 49, 0x00ff00ff);
-    // filledEllipseColor(screen, 100, 250, 99, 49, 0x00ff00ff);
-    // filledEllipseRGBA(screen, 250, 300, 49, 99, 0, 0, 0xff, 0xff);
+    if (ImGui::CollapsingHeader("Stats"))
+    {
+        ImGui::Text("Player position: %.2f, %.2f", player->pos.x, player->pos.y);
+    }
 
-    // lineColor(screen, 300, 200, 400, 300, 0x00ff00ff);
-    // lineRGBA(screen, 300, 300, 400, 400, 0, 0xff, 0, 0xff);
+    if (ImGui::Button("STAHP"))
+    {
+        updateState(Victory);
+        printf("Going to victory!!\n");
+    }
 
-    // SDL_UpdateRect(screen, 0, 0, 0, 0);
+    ImGui::End();
 }
 
 void monochrome_client::renderVictory()
@@ -211,9 +328,18 @@ void monochrome_client::newgame()
     if (game)
     {
         delete game;
-        game = new Game();
-        player = game->addPlayer(true, glm::vec4(playerColor.x, playerColor.y, playerColor.z, playerColor.w));
+        game = nullptr;
     }
+    game = new Game(glm::vec2(width, height));
+    if (usePlayerColor)
+    {
+        player = game->addHuman(glm::vec4(playerColor.x, playerColor.y, playerColor.z, playerColor.w));
+    }
+    else
+    {
+        player = game->addHuman();
+    }
+    
 }
 bool done = false;
 
@@ -228,12 +354,13 @@ int main(int argc, char **argv)
     }
 
     #ifdef __EMSCRIPTEN__
-    emscripten_set_main_loop(mainLoop, 0, 1);
+    printf("emscripten setting main loop!\n");
+    emscripten_set_main_loop(mainLoop, 60, 1);
 #else
     while (!done)
     {
         mainLoop();
-        //SDL_Delay(16);
+        SDL_Delay(1);
     }
 #endif
     return 0;
@@ -258,14 +385,16 @@ void mainLoop()
             return;
         }
     }
-    ImGui_ImplSdl_NewFrame(window);
+    ImGui_ImplSdl_NewFrame(client.window);
 
     client.update();
 
+    client.render();
+
     // Rendering
-    glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
-    glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-    glClear(GL_COLOR_BUFFER_BIT);
+    // glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
+    // glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+    // glClear(GL_COLOR_BUFFER_BIT);
     ImGui::Render();
-    SDL_GL_SwapWindow(window);
+    SDL_GL_SwapWindow(client.window);
 }

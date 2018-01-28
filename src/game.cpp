@@ -6,59 +6,71 @@
 
 #include <algorithm>
 
-void Game::begin()
+#include <stdio.h>
+
+glm::vec4 genColor()
 {
+    glm::vec3 bc = glm::linearRand(glm::vec3(0.0f), glm::vec3(1.0f));
+    return glm::vec4(bc, 1.0f);
+}
+
+void Game::begin()
+{   
     gameBeginTime = SDL_GetTicks();
 
-    auto genColor = []()
-    {
-        glm::vec3 bc = glm::linearRand(glm::vec3(0.0f), glm::vec3(1.0f));
-        return glm::vec4(bc, 1.0f);
-    };
+    printf("%s called! Game starting at tick %d\n", __FUNCTION__, gameBeginTime);
 
-    // Generate bot colors
+    // Generate bots
     for(int i = 0; i < numBots; i++)
     {
         bool badColor = true;
-        glm::vec4 bc;
+        glm::vec4 bc = genColor();
 
-        while (badColor)
-        {
-            bc = genColor();
-            badColor = std::any_of(colors.begin(), colors.end(), 
-                [this, bc](const glm::vec4 & v)
-                {
-                    return (bc - v).length() < colorTolerance;
-                });
-        }
+        // while (badColor)
+        // {
+        //     bc = genColor();
+        //     badColor = std::any_of(colors.begin(), colors.end(), 
+        //         [this, bc](const glm::vec4 & v)
+        //         {
+        //             return (bc - v).length() < colorTolerance;
+        //         });
+        // }
 
         colors.push_back(bc);
 
-        addPlayer(false, colors[i]);
+        addPlayer(numPlayers++, false, colors.size() - 1);
     }
 }
 
 void Game::update()
 {
+    auto t = SDL_GetTicks();
+
+    deltaTime = (float)(t - lastUpdateTime) / 1000.0f;
+
     for(auto & player : players)
     {
         player.update();
 
-        constrainPos(player.pos);
+        constrainPos(player.pos, player.size);
     }
 
     if (players.empty())
     {
         finished = true;
     }
+
+    lastUpdateTime = t;
 }
 
-void Game::addBot(int colorId)
+Player * Game::addHuman()
 {
-    players.push_back(Player(numPlayers++, false, colorId));
+    colors.push_back(genColor());
+    addPlayer(numPlayers++, true, colors.size() - 1);
+    return &players.back();
 }
 
-Player * Game::addPlayer(glm::vec4 color)
+Player * Game::addHuman(glm::vec4 color)
 {
     int colorId = 0;
 
@@ -78,7 +90,19 @@ Player * Game::addPlayer(glm::vec4 color)
         colorId = colors.size() - 1;
     }
 
-    players.push_back(Player(numPlayers++, true, colorId));
+    addPlayer(numPlayers++, true, colorId);
 
     return &players.back();
+}
+
+void Game::addPlayer(int playerId, bool human, int colorId)
+{
+    printf("Adding %s %d with color id %d\n", human ? "humanoid" : "bot", numPlayers, colorId);
+    players.push_back(Player(this, playerId, human, colorId));
+
+    auto & p = players[players.size() - 1];
+
+    p.pos = glm::linearRand(glm::vec2(0.0f), mapSize);
+
+    printf("player %d spawned at %.2f, %.2f\n", p.id, p.pos.x, p.pos.y);
 }

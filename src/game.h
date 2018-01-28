@@ -8,7 +8,7 @@
 class Game
 {
     public:
-        glm::vec2 size;
+        glm::vec2 mapSize;
         std::vector<Player> players;
         std::vector<glm::vec4> colors;
 
@@ -20,9 +20,13 @@ class Game
 
         bool finished = false;
 
-        uint gameBeginTime = 0;
+        unsigned int gameBeginTime = 0;
 
-        Game(glm::vec2 s) : size(s) {}
+        unsigned int lastUpdateTime = 0;
+
+        float deltaTime = 0.0f;
+
+        Game(glm::vec2 s) : mapSize(s) {}
 
         ~Game() {}
 
@@ -34,11 +38,14 @@ class Game
         {
             for(int i = 0; i < 2; i++)
             {
-                pos[i] = glm::clamp(pos[i], 0.0f, size[i]);
+                pos[i] = glm::clamp(pos[i], 0.0f, mapSize[i]);
             }
         }
 
         void addBot(int colorId);
 
-        Player * addPlayer(glm::vec4 color);
+        Player * addHuman();
+        Player * addHuman(glm::vec4 color);
+
+        void addPlayer(int playerId, bool human, int colorId);
 };
