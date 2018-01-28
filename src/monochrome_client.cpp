@@ -145,11 +145,11 @@ void monochrome_client::newgame()
     game = new Game(gs);
     if (gs.usePlayerColor)
     {
-        player = game->addHuman(gs.playerColor);
+        humanPlayer = game->addHuman(gs.playerColor);
     }
     else
     {
-        player = game->addHuman();
+        humanPlayer = game->addHuman();
     }
 
     game->begin();
@@ -186,7 +186,8 @@ void monochrome_client::updateLoading()
 
     ImGui::NewLine();
 
-    ImGui::Text("Left stick to move, right stick to aim/fire");
+    ImGui::Text("Move: left stick / WSAD");
+    ImGui::Text("Aim and fire: right stick (just move it!) or left mouse (move and click)");
 
     ImGui::End();
 }
@@ -295,8 +296,14 @@ void monochrome_client::renderPlaying()
 
         ImGui::SliderFloat("Offset scale", &offsetScale, 0.0f, 1.0f);
 
-        ImGui::Text("Player pos: %.2f, %.2f. Heading: %.2f, %.2f", player->pos.x, player->pos.y, 
-            player->input.aim.x, player->input.aim.y);
+        if (humanPlayer >= 0 && humanPlayer < game->players.size())
+        {
+            auto hp = &game->players[humanPlayer];
+
+            ImGui::Text("Player pos: %.2f, %.2f. Heading: %.2f, %.2f", hp->pos.x, hp->pos.y, 
+                hp->input.aim.x, hp->input.aim.y);
+        }
+        
 
         // for(auto & p : game->players)
         // {
@@ -421,15 +428,40 @@ void mainLoop()
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
     // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+
+    client.lastInput = client.input;
+
+    client.input.keysUp.clear();
+    client.input.keysDown.clear();
+
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
         ImGui_ImplSdl_ProcessEvent(&event);
-        if (event.type == SDL_QUIT)
+        switch(event.type)
         {
-            done = true;
-            return;
+            case SDL_QUIT:
+                done = true;
+                break;
+            case SDL_KEYDOWN:
+                client.input.keyboardState[event.key.keysym.sym] = true;
+                client.input.keysDown.insert(event.key.keysym.sym);
+                break;
+            case SDL_KEYUP:
+                client.input.keyboardState[event.key.keysym.sym] = false;
+                client.input.keysUp.insert(event.key.keysym.sym);
+                break;
+            case SDL_MOUSEMOTION:
+                client.input.mousePos = glm::vec2(event.motion.x, event.motion.y);
+                break;
+            case SDL_MOUSEBUTTONDOWN:
+            case SDL_MOUSEBUTTONUP:
+                client.input.mouseState[event.button.button] = event.button.state;
+                break;
+            default:
+                break;
         }
+        
     }
     ImGui_ImplSdl_NewFrame(client.window);
 

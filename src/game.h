@@ -86,8 +86,9 @@ class Game
 
         void addBot(int colorId);
 
-        Player * addHuman();
-        Player * addHuman(glm::vec4 color);
+        // Returns the index
+        int addHuman();
+        int addHuman(glm::vec4 color);
 
         void addPlayer(int playerId, bool human, int colorId);
 

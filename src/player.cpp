@@ -11,33 +11,54 @@ unsigned int Player::fireRate = 1000;
 
 void Player::update()
 {
+    lastInput = input;
+
     if (isHuman)
     {
         auto & client = monochrome_client::get();
 
-        if (client.controller)
+        auto & l = client.input.keyboardState[SDLK_a];
+        auto & r = client.input.keyboardState[SDLK_d];
+        auto & u = client.input.keyboardState[SDLK_w];
+        auto & d = client.input.keyboardState[SDLK_s];
+
+        glm::vec2 left = {0.0f, 0.0f}, right = {0.0f, 0.0f};
+
+        left.x = l ? -1.0f : r ? 1.0f : 0.0f;
+        left.y = d ? 1.0f : u ? -1.0f : 0.0f;
+
+        auto mouseDiff = client.input.mousePos - pos;
+        right = glm::normalize(mouseDiff);
+
+        auto & lmb = client.input.mouseState[SDL_BUTTON_LEFT];
+        
+        input.firing = lmb == SDL_PRESSED;
+
+        // Overwrite with controller input if we aren't detecting anything
+        if (glm::length(left) < 0.1f && client.controller)
         {
-            lastInput = input;
-
-            float lx = glm::clamp(
-                (float)SDL_GameControllerGetAxis(client.controller, SDL_CONTROLLER_AXIS_LEFTX) /  32767, 
+            left.x = glm::clamp(
+                (float)SDL_GameControllerGetAxis(client.controller, SDL_CONTROLLER_AXIS_LEFTX) /  32767.0f, 
                 -1.0f, 1.0f);
-            float ly = glm::clamp(
-                (float)SDL_GameControllerGetAxis(client.controller, SDL_CONTROLLER_AXIS_LEFTY) /  32767, 
+            left.y = glm::clamp(
+                (float)SDL_GameControllerGetAxis(client.controller, SDL_CONTROLLER_AXIS_LEFTY) /  32767.0f, 
                 -1.0f, 1.0f);
 
-            float rx = glm::clamp(
-                (float)SDL_GameControllerGetAxis(client.controller, SDL_CONTROLLER_AXIS_RIGHTX) /  32767, 
-                -1.0f, 1.0f);
-            float ry = glm::clamp(
-                (float)SDL_GameControllerGetAxis(client.controller, SDL_CONTROLLER_AXIS_RIGHTY) /  32767, 
-                -1.0f, 1.0f);
+            if (!input.firing)
+            {
+                right.x = glm::clamp(
+                    (float)SDL_GameControllerGetAxis(client.controller, SDL_CONTROLLER_AXIS_RIGHTX) /  32767.0f, 
+                    -1.0f, 1.0f);
+                right.y = glm::clamp(
+                    (float)SDL_GameControllerGetAxis(client.controller, SDL_CONTROLLER_AXIS_RIGHTY) /  32767.0f, 
+                    -1.0f, 1.0f);
 
-            input.move = {lx, ly};
-            input.aim = {rx, ry};
-            input.firing = glm::length(input.aim) > 0.2f;
+                input.firing = glm::length(input.aim) > 0.2f;
+            }
         }
 
+        input.move = left;
+        input.aim = right;
     }
     else
     {

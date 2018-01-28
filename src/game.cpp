@@ -172,14 +172,14 @@ bool Game::bulletCollide(const Player & p, const Bullet & b)
     return glm::length(p.pos - b.pos) < (p.size + b.size);
 }
 
-Player * Game::addHuman()
+int Game::addHuman()
 {
     colors.push_back(genColor());
     addPlayer(numPlayers++, true, colors.size() - 1);
-    return &players[players.size() - 1];
+    return players.size() - 1;
 }
 
-Player * Game::addHuman(glm::vec4 color)
+int Game::addHuman(glm::vec4 color)
 {
     int colorId = 0;
 
@@ -201,7 +201,7 @@ Player * Game::addHuman(glm::vec4 color)
 
     addPlayer(numPlayers++, true, colorId);
 
-    return &players[players.size() - 1];
+    return players.size() - 1;
 }
 
 void Game::addPlayer(int playerId, bool human, int colorId)
@@ -232,6 +232,11 @@ unsigned int Game::requestBullet(const Player * p)
 size_t Game::getSize()
 {
     return (sizeof(Bullet) * bullets.size())
+        + (sizeof(int) * deadBullets.size())
         + (sizeof(Player) * players.size())
-        + (sizeof(ColorStat) * players.size() * matchStats.size());
+        + (sizeof(glm::vec4) * colors.size())
+        + (sizeof(ColorStat) * players.size() * matchStats.size())
+        + (sizeof(ColorStat) * colorStats.size())
+        + (sizeof(ColorStat) * victorStats.size());
+
 }

@@ -10,6 +10,8 @@
 #include "imgui.h"
 
 #include <vector>
+#include <map>
+#include <unordered_set>
 
 #include "gamestart.h"
 
@@ -40,7 +42,7 @@ class monochrome_client
         ImVec4 playerColor;
         bool usePlayerColor = false;
 
-        Player * player = nullptr;
+        int humanPlayer = -1;
         Game * game = nullptr;
 
         int width = 1280;
@@ -52,6 +54,16 @@ class monochrome_client
         SDL_Joystick * joystick = nullptr;
         SDL_GLContext glcontext;
         SDL_DisplayMode current;
+
+        struct Input
+        {
+            std::map<int, bool> keyboardState;
+            std::unordered_set<int> keysUp, keysDown;
+            glm::vec2 mousePos;
+            std::map<int, int> mouseState;
+        };
+
+        Input input, lastInput;
 
         bool running = false;
 
