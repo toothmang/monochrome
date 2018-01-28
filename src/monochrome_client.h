@@ -11,6 +11,8 @@
 
 #include <vector>
 
+#include "gamestart.h"
+
 class Game;
 class Player;
 
@@ -32,6 +34,8 @@ class monochrome_client
 
         State state;
 
+        GameStart gs;
+
         char playerName[1024] = "Jimothy";
         ImVec4 playerColor;
         bool usePlayerColor = false;
@@ -51,6 +55,10 @@ class monochrome_client
 
         bool running = false;
 
+        unsigned int victoryTime = 0;
+        unsigned int victoryLength = 1000 * 10;
+        unsigned int victoryRemaining = 0;
+
         bool init();
 
         void shutdown();
@@ -64,6 +72,9 @@ class monochrome_client
         void update();
 
         void updateState(State newState);
+
+        // Creates a new game
+        void newgame();
 
         // update function for loading screen state
         void updateLoading();
@@ -86,11 +97,6 @@ class monochrome_client
         void renderGame();
 
         void renderVictory();
-
-        // Creates a new game
-        void newgame();
-        
-        
 
     protected:
         monochrome_client() {}

@@ -7,37 +7,51 @@ class Game;
 class PlayerInput
 {
     public:
-        glm::vec2 move = glm::vec2(0.0f, 0.0f);
-        float heading = 0.0f;
-        bool firing{false};
+        glm::vec2 move = {0.0f, 0.0f};
+        glm::vec2 aim = {0.0f, 0.0f};
+        bool firing = false;
 };
 
 class Player
 {
     public:
         Game * game = nullptr;
-        unsigned int lastUpdate;
-        unsigned int botMin = 1000, botMax = 2000;
-        unsigned int botWait = 0;
+
         bool isHuman = false;
         int id = 0;
         int colorId = 0;
         glm::vec2 pos = {0.0f, 0.0f};
         glm::vec2 vel = {0.0f, 0.0f};
-        float heading = 0.0f;
-        float size = 30.0f;
-        float maxSpeed = 100.0f;
-        glm::vec4 color = {1.0f, 1.0f, 1.0f, 1.0f};
+        glm::vec2 headingPos = {0.0f, 0.0f};
+        float size = 15.0f;
+        float minSize = 0.0f;
+        
+
+        unsigned int lastUpdate = 0;
+        unsigned int lastFireTime = 0;
+        
+        unsigned int botMin = 1000, botMax = 2000;
+        unsigned int botWait = 0;
+
+        static float maxSpeed;
+        static unsigned int fireRate;
 
         PlayerInput input;
 
-        Player(Game * g, int _id, bool human, int colId)
-            : game(g), id(_id), isHuman(human), colorId(colId)
+        Player(Game * g, const glm::vec2 & p, int _id, bool human, int colId,
+            float _size, float _minSize = 0.0f)
+            : game(g), pos(p), id(_id), isHuman(human), colorId(colId),
+            size(_size), minSize(_minSize)
         {
 
         }
 
         virtual ~Player() {}
+
+        static glm::vec2 headingDir(float h)
+        {
+            return glm::vec2(glm::cos(h), glm::sin(h));
+        }
 
         void update();
 };

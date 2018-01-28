@@ -15,8 +15,9 @@ glm::vec4 genColor()
 }
 
 void Game::begin()
-{
+{   
     gameBeginTime = SDL_GetTicks();
+    lastUpdateTime = gameBeginTime;
 
     printf("%s called! Game starting at tick %d\n", __FUNCTION__, gameBeginTime);
 
@@ -29,7 +30,7 @@ void Game::begin()
         // while (badColor)
         // {
         //     bc = genColor();
-        //     badColor = std::any_of(colors.begin(), colors.end(),
+        //     badColor = std::any_of(colors.begin(), colors.end(), 
         //         [this, bc](const glm::vec4 & v)
         //         {
         //             return (bc - v).length() < colorTolerance;
@@ -48,26 +49,86 @@ void Game::update()
 
     deltaTime = (float)(t - lastUpdateTime) / 1000.0f;
 
-    for(auto & player : players)
+    for(const auto & db : deadBullets)
     {
-        player.update();
-
-        constrainPos(player.pos, player.size);
+        auto fb = bullets.find(db);
+        if (fb != bullets.end())
+        {
+            bullets.erase(fb);
+        }
     }
 
-    if (players.empty())
+    deadBullets.clear();
+
+    for(auto & p : players)
     {
+        p.update();
+
+        constrainPos(p.pos, p.size);
+    }
+
+    for(auto & b : bullets)
+    {
+        b.second.update(deltaTime);
+        
+        if (constrainPos(b.second.pos, b.second.size))
+        {
+            deadBullets.push_back(b.first);
+        }
+
+        for(auto & p : players)
+        {
+            if (bulletCollide(p, b.second))
+            {
+                deadBullets.push_back(b.first);
+                // printf("Bullet %d (from player %d), color %d collided with player %d, color %d\n",
+                //     b.first, b.second.playerId, b.second.colorId, p.id, p.colorId);
+                p.colorId = b.second.colorId;
+            }
+        }
+    }
+
+    if (players.empty() || lastUpdateTime - gameBeginTime > roundLength)
+    {
+        printf("Players empty or time ran out! Finishing game...\n");
         finished = true;
+    }
+    else
+    {
+        bool sameColor = true;
+        int col = players[0].colorId;
+        for (auto & p : players)
+        {
+            //printf("Player %d color id %d\n", p.id, p.colorId);
+            if (p.colorId != col)
+            {
+                sameColor = false;
+                break;
+            }
+        }
+
+        finished = sameColor;
+
+        if (finished)
+        {
+            printf("All %d player colors the same! Finishing game...\n", players.size());
+        }
     }
 
     lastUpdateTime = t;
+}
+
+bool Game::bulletCollide(const Player & p, const Bullet & b)
+{
+    if (p.colorId == b.colorId) return false;
+    return glm::length(p.pos - b.pos) < (p.size + b.size);
 }
 
 Player * Game::addHuman()
 {
     colors.push_back(genColor());
     addPlayer(numPlayers++, true, colors.size() - 1);
-    return &players.back();
+    return &players[players.size() - 1];
 }
 
 Player * Game::addHuman(glm::vec4 color)
@@ -76,9 +137,9 @@ Player * Game::addHuman(glm::vec4 color)
 
     for(int i = 0; i < colors.size(); i++)
     {
-        auto diff = colors[i] - color;
+        auto diff = glm::length(colors[i] - color);
 
-        if (diff.length() < colorTolerance)
+        if (diff < colorTolerance)
         {
             colorId = i;
             break;
@@ -92,38 +153,31 @@ Player * Game::addHuman(glm::vec4 color)
 
     addPlayer(numPlayers++, true, colorId);
 
-    return &players.back();
+    return &players[players.size() - 1];
 }
 
 void Game::addPlayer(int playerId, bool human, int colorId)
 {
     printf("Adding %s %d with color id %d\n", human ? "humanoid" : "bot", numPlayers, colorId);
-    players.push_back(Player(this, playerId, human, colorId));
+    players.push_back(Player(this, glm::linearRand(glm::vec2(0.0f), mapSize),
+        playerId, human, colorId, playerSize, playerDonut));
 
-    auto & p = players[players.size() - 1];
+    const auto & p = players[players.size() - 1];
 
-    p.pos = glm::linearRand(glm::vec2(0.0f), mapSize);
-
-    printf("player %d spawned at %.2f, %.2f\n", p.id, p.pos.x, p.pos.y);
+    printf("player %d (color %d) spawned at %.2f, %.2f\n", p.id, p.colorId, p.pos.x, p.pos.y);
 }
 
-// Given hue,sat,val in [0,1], return r,g,b in [0,1] as a vec3
-glm::vec3 hsv2rgb(float hue, float sat, float val) {
-    float c = val * sat;
-    float m = val - c;
+unsigned int Game::requestBullet(const Player * p)
+{
+    if (!p) return 0;
 
-    int   phase   = hue * 6.0; // hue / 60 works if you want hue in [0,360)
-    float phase_r = hue * 6.0 - phase;
+    auto timeDiff = lastUpdateTime - p->lastFireTime;
+    if (timeDiff > p->fireRate)
+    {
+        bullets[numBullets++] = Bullet(p->headingPos, p->input.aim * 3.0f * p->maxSpeed, 
+            p->id, p->colorId, p->size * 0.2f, lastUpdateTime);
+        return lastUpdateTime;
+    }
 
-    glm::vec3 ret(m);
-
-    if (phase == 6 ||
-        phase == 0) { ret.r += c;  ret.g +=       phase_r  * c; }
-    if (phase == 1) { ret.g += c;  ret.r += (1. - phase_r) * c; }
-    if (phase == 2) { ret.g += c;  ret.b +=       phase_r  * c; }
-    if (phase == 3) { ret.b += c;  ret.g += (1. - phase_r) * c; }
-    if (phase == 4) { ret.b += c;  ret.r +=       phase_r  * c; }
-    if (phase == 5) { ret.r += c;  ret.b += (1. - phase_r) * c; }
-
-    return ret;
+    return 0;
 }

@@ -9,8 +9,6 @@
 
 #include "circlerenderer.h"
 
-#include "messages.hpp"
-
 #include <stdio.h>
 
 
@@ -30,7 +28,7 @@ bool monochrome_client::init()
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     SDL_GetCurrentDisplayMode(0, &current);
-
+    
     SDL_CreateWindowAndRenderer(width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE , &window, &renderer);
     SDL_SetWindowTitle(window, "Monochrome - Winning Colors!");
     glcontext = SDL_GL_CreateContext(window);
@@ -123,24 +121,58 @@ void monochrome_client::updateState(State newState)
             break;
         case Playing:
             newgame();
-            game->begin();
             break;
         case Victory:
+            victoryTime = SDL_GetTicks();
             break;
         default:
             break;
     }
+}
 
+void monochrome_client::newgame()
+{
+    if (game)
+    {
+        delete game;
+        game = nullptr;
+    }
+    gs.size = glm::vec2(width, height);
+    game = new Game(gs);
+    if (gs.usePlayerColor)
+    {
+        player = game->addHuman(gs.playerColor);
+    }
+    else
+    {
+        player = game->addHuman();
+    }
 
+    game->begin();
 }
 
 void monochrome_client::updateLoading()
 {
     ImGui::Begin("LOADING SCREEN");
     ImGui::InputText("Enter name", playerName, 1024);
-    if (ImGui::ColorEdit3("Choose color", (float*)&playerColor))
+    
+    ImGui::Checkbox("Custom color", &gs.usePlayerColor);
+
+    if (gs.usePlayerColor)
     {
-        usePlayerColor = true;
+        ImGui::ColorEdit3("Choose color", (float*)&gs.playerColor);
+    }
+
+    ImGui::InputInt("Num bots", &gs.numBots);
+
+    ImGui::InputFloat("Player size", &gs.playerSize);
+    ImGui::InputFloat("Player donut", &gs.playerDonut);
+
+    ImGui::InputFloat("Player max speed", &Player::maxSpeed);
+    int fr = Player::fireRate;
+    if (ImGui::InputInt("Player fire rate", &fr))
+    {
+        Player::fireRate = (unsigned int)fr;
     }
 
     if (ImGui::Button("PLAY"))
@@ -168,13 +200,13 @@ void monochrome_client::updatePlaying()
 
 void monochrome_client::updateVictory()
 {
-    ImGui::Begin("Victory screen!");
+    auto victoryElapsed = SDL_GetTicks() - victoryTime;
+    victoryRemaining = victoryLength - victoryElapsed;
 
-    if (ImGui::Button("End"))
+    if (victoryElapsed > victoryLength)
     {
         updateState(LoadingScreen);
     }
-    ImGui::End();
 }
 
 void monochrome_client::render()
@@ -199,14 +231,14 @@ void monochrome_client::render()
             break;
     }
 
-    SDL_RenderPresent(renderer);
+    //SDL_RenderPresent(renderer);
 }
 
 void monochrome_client::renderTopMenu()
 {
     ImGui::BeginMainMenuBar();
 
-    ImGui::Text("Monochrome! Application average %.3f ms/frame (%.1f FPS)",
+    ImGui::Text("Monochrome! Application average %.3f ms/frame (%.1f FPS)", 
         1000.0f / ImGui::GetIO().Framerate,
         ImGui::GetIO().Framerate);
 
@@ -215,107 +247,53 @@ void monochrome_client::renderTopMenu()
 
 void monochrome_client::renderLoading()
 {
-    int w, h, isfs;
-    emscripten_get_canvas_size(&w, &h, &isfs);
-    SDL_Rect rect = { 0, 0, w, h };
-    SDL_RenderFillRect(renderer, &rect);
-}
 
-void monochrome_client::renderPlayer(const Player & player)
-{
-
-
-    static auto pi  = glm::pi<float>();
-    static auto pih = glm::half_pi<float>();
-
-    SDL_SetRenderDrawColor(renderer,
-        255,
-        255,
-        255,
-        SDL_ALPHA_OPAQUE);
-
-    //drew  28 lines with   4x4  circle with precision of 150 0ms
-    //drew 132 lines with  25x14 circle with precision of 150 0ms
-    //drew 152 lines with 100x50 circle with precision of 150 3ms
-    const int prec = 27; // precision value; value of 1 will draw a diamond, 27 makes pretty smooth circles.
-    float theta = 0;     // angle that will be increased each loop
-
-    //starting point
-    int ps = player.size;
-    int psh = ps / 2;
-    int x  = (float)ps * glm::cos(theta);//start point
-    int y  = (float)ps * glm::sin(theta);//start point
-    int x0 = player.pos.x;
-    int y0 = player.pos.y;
-    int x1 = x;
-    int y1 = y;
-
-    //printf("%d %d          %d %d\n", x0, y0, x, y);
-
-    static SDL_Rect playerRect;
-
-    playerRect.x = x0 - ps;
-    playerRect.y = y0 - ps;
-    playerRect.w = ps;
-    playerRect.h = ps;
-
-    SDL_RenderFillRect(renderer, &playerRect);
-
-    return;
-
-    //repeat until theta >= 90;
-    float step = pih/(float)prec; // amount to add to theta each time (degrees)
-    for(theta=step;  theta <= pih;  theta+=step)//step through only a 90 arc (1 quadrant)
-    {
-        //get new point location
-        x1 = (float)player.size * glm::cos(theta) + 0.5; //new point (+.5 is a quick rounding method)
-        y1 = (float)player.size * glm::sin(theta) + 0.5; //new point (+.5 is a quick rounding method)
-
-        //draw line from previous point to new point, ONLY if point incremented
-        if( (x != x1) || (y != y1) )//only draw if coordinate changed
-        {
-            SDL_RenderDrawLine(renderer, x0 + x, y0 - y,    x0 + x1, y0 - y1 );//quadrant TR
-            SDL_RenderDrawLine(renderer, x0 - x, y0 - y,    x0 - x1, y0 - y1 );//quadrant TL
-            SDL_RenderDrawLine(renderer, x0 - x, y0 + y,    x0 - x1, y0 + y1 );//quadrant BL
-            SDL_RenderDrawLine(renderer, x0 + x, y0 + y,    x0 + x1, y0 + y1 );//quadrant BR
-        }
-        //save previous points
-        x = x1;//save new previous point
-        y = y1;//save new previous point
-    }
-    //arc did not finish because of rounding, so finish the arc
-    if(x!=0)
-    {
-        x=0;
-        SDL_RenderDrawLine(renderer, x0 + x, y0 - y,    x0 + x1, y0 - y1 );//quadrant TR
-        SDL_RenderDrawLine(renderer, x0 - x, y0 - y,    x0 - x1, y0 - y1 );//quadrant TL
-        SDL_RenderDrawLine(renderer, x0 - x, y0 + y,    x0 - x1, y0 + y1 );//quadrant BL
-        SDL_RenderDrawLine(renderer, x0 + x, y0 + y,    x0 + x1, y0 + y1 );//quadrant BR
-    }
 }
 
 void monochrome_client::renderGame()
 {
-    SDL_SetRenderDrawColor(renderer,
-        255,
-        255,
-        255,
-        255);
-
     auto & cr = CircleRenderer::get();
 
-    for(const auto & player : game->players)
+    static float playerMinRadius = 18.0f;
+    static float offsetScale = 0.4f;
+    
+    for(const auto & p : game->players)
     {
-        cr.render(player.pos, player.size, game->colors[player.colorId]);
-        //renderPlayer(player);
+        // Render a sphere for the player position
+        cr.render(p.pos, game->colors[p.colorId], p.size, p.minSize);
+
+        // And also render a smaller sphere for their heading
+        cr.render(p.headingPos, game->colors[p.colorId], p.size * offsetScale);
+
+        // If human, highlight them a bit
+        if (p.isHuman)
+        {
+            cr.render(p.pos, glm::vec4(1.0f, 1.0f, 0.0f, 1.0f), p.size * 1.66f, p.size * 1.5f);
+        }
     }
 
+    for(const auto & b : game->bullets)
+    {
+        cr.render(b.second.pos, game->colors[b.second.colorId], b.second.size);
+    }
 
     ImGui::Begin("PLAYTIME!");
 
-    if (ImGui::CollapsingHeader("Stats"))
+    auto diff = game->lastUpdateTime - game->gameBeginTime;
+    auto rem = (game->roundLength - diff) * 0.001f;
+
+    ImGui::Text("Time remaining: %.2f sec", rem);
+
+    ImGui::SliderFloat("Offset scale", &offsetScale, 0.0f, 1.0f);
+
+    for(auto & p : game->players)
     {
-        ImGui::Text("Player position: %.2f, %.2f", player->pos.x, player->pos.y);
+        if (p.isHuman)
+        {
+            ImGui::Text("Player pos: %.2f, %.2f. Heading: %.2f, %.2f", p.pos.x, p.pos.y, 
+                p.input.aim.x, p.input.aim.y);
+            
+        }
     }
 
     if (ImGui::Button("STAHP"))
@@ -329,32 +307,22 @@ void monochrome_client::renderGame()
 
 void monochrome_client::renderVictory()
 {
+    ImGui::Begin("Victory screen!");
 
+    ImGui::Text("Time to next round: %.2f", victoryRemaining * 0.001f);
+    
+    if (ImGui::Button("End"))
+    {
+        updateState(LoadingScreen);
+    }
+    ImGui::End();
 }
 
-void monochrome_client::newgame()
-{
-    if (game)
-    {
-        delete game;
-        game = nullptr;
-    }
-    game = new Game(glm::vec2(width, height));
-    if (usePlayerColor)
-    {
-        player = game->addHuman(glm::vec4(playerColor.x, playerColor.y, playerColor.z, playerColor.w));
-    }
-    else
-    {
-        player = game->addHuman();
-    }
-
-}
 bool done = false;
 
 void mainLoop();
 
-int main(int argc, char **argv)
+int main(int argc, char **argv) 
 {
     if (!monochrome_client::get().init())
     {

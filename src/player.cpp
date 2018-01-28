@@ -6,6 +6,9 @@
 
 #include "monochrome_client.h"
 
+float Player::maxSpeed = 100.0f;
+unsigned int Player::fireRate = 1000;
+
 void Player::update()
 {
     if (isHuman)
@@ -28,10 +31,11 @@ void Player::update()
                 (float)SDL_GameControllerGetAxis(client.controller, SDL_CONTROLLER_AXIS_RIGHTY) /  32767, 
                 -1.0f, 1.0f);
 
-            input.move = glm::vec2(lx, ly);
-            input.heading = glm::atan(rx, ry);
+            input.move = {lx, ly};
+            input.aim = {rx, ry};
+            input.firing = glm::length(input.aim) > 0.2f;
         }
-        
+
     }
     else
     {
@@ -40,23 +44,58 @@ void Player::update()
 
         if (diff > botWait)
         {
-            static auto pi = glm::pi<float>();
+            // Aim at nearest non-color player
+            glm::vec2 minDir = {0.0f, 0.0f};
+            float minDist = FLT_MAX;
+
+            for(auto & p : game->players)
+            {
+                if (p.id == id || p.colorId == colorId) continue;
+                auto dir = p.pos - pos;
+                auto d = glm::length(dir);
+                if (d < minDist)
+                {
+                    minDist = d;
+                    minDir = glm::normalize(dir);
+                }
+            }
+
+            if (glm::length(minDir) > 0.0f)
+            {
+                input.aim = minDir;
+            }
+            else
+            {
+                input.aim = glm::diskRand(1.0f);
+            }
+
             input.move = glm::diskRand(1.0f);
-            input.heading = glm::linearRand(-pi, pi);
+            input.firing = glm::linearRand(0.0f, 1.0f) > 0.5f;
+            
 
             botWait = glm::linearRand(botMin, botMax);
             lastUpdate = currentTime;
         }
     }
 
-    if (input.move.length() < 0.1f)
+    if (glm::length(input.move) < 0.2f)
     {
         input.move = {0.0f, 0.0f};
     }
 
     vel = input.move * maxSpeed * game->deltaTime;
     pos = pos + vel;
-    heading = input.heading;
+    headingPos = pos + input.aim * size;
+
+    if (input.firing)
+    {
+        auto ft = game->requestBullet(this);
+
+        if (ft)
+        {
+            lastFireTime = ft;
+        }
+    }
 
     // if (isHuman)
     // {

@@ -72,11 +72,12 @@ bool CircleRenderer::init()
         "uniform vec2 center;\n"
         "uniform vec2 mapSize;\n"
         "uniform float radius;\n"
+        "uniform float minRadius;\n"
         "varying vec2 v_uv;\n"
         "void main()\n"
         "{\n"
         "   float dist = length(gl_FragCoord.xy - vec2(center.x,mapSize.y-center.y));\n"
-        "   if (dist > radius) discard;\n"
+        "   if (dist > radius || dist < minRadius) discard;\n"
         "	gl_FragColor = color;\n"
         "}\n";
 
@@ -98,6 +99,12 @@ bool CircleRenderer::init()
         printf("Vertex shader log:\n%s\n", std::string(shaderLog.begin(), shaderLog.end()).c_str());
 	}
 
+    if (!didCompile)
+    {
+        printf("Vertex shader failed to compile\n");
+        return false;
+    }
+
     glCompileShader(fragHandle);
     glGetShaderiv(fragHandle, GL_COMPILE_STATUS, &didCompile);
     glGetShaderiv(fragHandle, GL_INFO_LOG_LENGTH, &logLength);
@@ -107,6 +114,12 @@ bool CircleRenderer::init()
 		glGetShaderInfoLog(fragHandle, logLength, &logLength, shaderLog.data());
         printf("Frag shader log:\n%s\n", std::string(shaderLog.begin(), shaderLog.end()).c_str());
 	}
+    if (!didCompile)
+    {
+        printf("Frag shader failed to compile\n");
+        return false;
+    }
+
     glAttachShader(shaderHandle, vertexHandle);
     glAttachShader(shaderHandle, fragHandle);
     glLinkProgram(shaderHandle);
@@ -129,6 +142,7 @@ bool CircleRenderer::init()
     uniformMVPLoc = glGetUniformLocation(shaderHandle, "MVP");
     uniformCenterLoc = glGetUniformLocation(shaderHandle, "center");
     uniformRadiusLoc = glGetUniformLocation(shaderHandle, "radius");
+    uniformMinRadiusLoc = glGetUniformLocation(shaderHandle, "minRadius");
     uniformColorLoc = glGetUniformLocation(shaderHandle, "color");
     uniformMapSizeLoc = glGetUniformLocation(shaderHandle, "mapSize");
     
@@ -166,7 +180,7 @@ bool CircleRenderer::init()
         {
             indices.push_back(i + 2);
         }
-
+        
     }
 
     glGenBuffers(1, &vboHandle);
@@ -182,7 +196,7 @@ bool CircleRenderer::init()
     return true;
 }
 
-void CircleRenderer::render(const glm::vec2 & p, float radius, const glm::vec4 & color)
+void CircleRenderer::render(const glm::vec2 & p, const glm::vec4 & color, float radius, float minRadius)
 {
     if (!initialized)
     {
@@ -205,10 +219,11 @@ void CircleRenderer::render(const glm::vec2 & p, float radius, const glm::vec4 &
     };
 
     glUseProgram(shaderHandle);
-
+    
     glUniformMatrix4fv(uniformMVPLoc, 1, GL_FALSE, &mvp[0][0]);
     glUniform2fv(uniformCenterLoc, 1, &p[0]);
     glUniform1f(uniformRadiusLoc, radius);
+    glUniform1f(uniformMinRadiusLoc, minRadius);
     glUniform4fv(uniformColorLoc, 1, &color[0]);
     glUniform2fv(uniformMapSizeLoc, 1, &client.game->mapSize[0]);
 
