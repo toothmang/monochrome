@@ -109,6 +109,12 @@ void async_socket_connection(int fd, void* userData) {
     next_pID += 1;
 }
 
+void broadcast(std::string message)
+{
+    for (auto client : connections)
+        do_msg_enqueue(client, message, async_socket_close);
+}
+
 void deserialize(std::string message)
 {
     playerID_t pID;
@@ -136,6 +142,8 @@ void deserialize(std::string message)
         player.vel = velocity;
         player.timestamp = ts;
         player.colorId = cID;
+
+        broadcast(message);
     }
     if (message[0] == 0x2) {
         std::tie(pID, seq, position, velocity, cID, ts) = deserialize_projectile(message);
@@ -147,11 +155,11 @@ void deserialize(std::string message)
         while (game->colors.size() <= cID) game->colors.push_back( glm::vec4(0.) );
 
         game->colors[cID] = glm::vec4(color, 1.);
+
+        broadcast(message);
     }
     // Message 0x4 == dropmessage  is never sent from the client.
-    if (message[0] == 0x5) {
-        std::tie(pID, ts) = deserialize_intromessage(message);
-    }
+    // Message 0x5 == intromessage is never sent from the client.
     // Message 0x6 == event   is never sent from the client.
 
 }

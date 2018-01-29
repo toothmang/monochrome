@@ -10,8 +10,13 @@
 #include "circlerenderer.h"
 
 #include <stdio.h>
+<<<<<<< Updated upstream
 #include <algorithm>
 #include <functional>
+=======
+
+#include <SDL2/SDL_opengles2.h>
+>>>>>>> Stashed changes
 
 ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
@@ -71,6 +76,11 @@ bool monochrome_client::init()
     {
         printf( "Warning: Unable to open game controller! SDL Error: %s\n", SDL_GetError() );
     }
+
+    fbo = new FBO(width, height);
+    fbo->bind();
+    fbo->blank();
+    fbo->unbind();
 
     return true;
 }
@@ -261,6 +271,30 @@ void monochrome_client::renderPlaying()
     auto & cr = CircleRenderer::get();
 
     static float offsetScale = 0.4f;
+
+    fbo->bind();
+
+    for(const auto & p : game->players)
+    {
+        glm::vec4 color(0., 0., 0., 1.);
+        if (p.colorId < game->colors.size()) color = game->colors[p.colorId];
+
+        // Render a sphere for the player position
+        cr.render(p.pos, color, p.size, p.minSize);
+
+        // And also render a smaller sphere for their heading
+        cr.render(p.headingPos, color, p.size * offsetScale);
+    }
+
+    fbo->unbind();
+    fbo->load();
+
+    //cr.render(glm::vec2(640., 360.), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), 1200., 0., true);
+
+    glBlitFramebuffer(0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+    fbo->unbind();
+
 
     for(const auto & p : game->players)
     {

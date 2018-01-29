@@ -68,6 +68,8 @@ bool CircleRenderer::init()
         // them, so I define the shader without it and then add it here.
         "precision mediump float;\n"
 #endif
+        "uniform sampler2D tex;\n"
+        "uniform float texCoeff;\n"
         "uniform vec4 color;\n"
         "uniform vec2 center;\n"
         "uniform vec2 mapSize;\n"
@@ -76,9 +78,11 @@ bool CircleRenderer::init()
         "varying vec2 v_uv;\n"
         "void main()\n"
         "{\n"
+        "   vec3 texColor = texture2D(tex, v_uv).rgb;\n"
         "   float dist = length(gl_FragCoord.xy - vec2(center.x,mapSize.y-center.y));\n"
         "   if (dist > radius || dist < minRadius) discard;\n"
-        "	gl_FragColor = color;\n"
+        "	gl_FragColor.rgb = mix(color.rgb, texColor, texCoeff);\n"
+        "   gl_FragColor.a = 1.;\n"
         "}\n";
 
     shaderHandle = glCreateProgram();
@@ -133,22 +137,24 @@ bool CircleRenderer::init()
 		glGetProgramiv(shaderHandle, GL_INFO_LOG_LENGTH, &logLength);
 		std::vector<GLchar> shaderLog(logLength + 1);
 		glGetProgramInfoLog(shaderHandle, logLength, &logLength, shaderLog.data());
- 
+
 		std::string linkLog = std::string(shaderLog.begin(), shaderLog.end());
 
 		printf("Shader did not link. Log:\%s\n", linkLog.c_str());
 	}
 
+    uniformTexLoc = glGetUniformLocation(shaderHandle, "tex");
+    uniformTexScaleLoc = glGetUniformLocation(shaderHandle, "texCoeff");
     uniformMVPLoc = glGetUniformLocation(shaderHandle, "MVP");
     uniformCenterLoc = glGetUniformLocation(shaderHandle, "center");
     uniformRadiusLoc = glGetUniformLocation(shaderHandle, "radius");
     uniformMinRadiusLoc = glGetUniformLocation(shaderHandle, "minRadius");
     uniformColorLoc = glGetUniformLocation(shaderHandle, "color");
     uniformMapSizeLoc = glGetUniformLocation(shaderHandle, "mapSize");
-    
+
     attribPosLoc = glGetAttribLocation(shaderHandle, "pos");
     attribUVLoc = glGetAttribLocation(shaderHandle, "uv");
-    
+
     vertices.clear();
     indices.clear();
 
@@ -156,7 +162,7 @@ bool CircleRenderer::init()
 
     float theta = glm::two_pi<float>() / roundness;
 
-    static glm::vec2 uvs[] = 
+    static glm::vec2 uvs[] =
     {
         glm::vec2(0.0f, 0.0f),
         glm::vec2(1.0f, 0.0f),
@@ -180,7 +186,7 @@ bool CircleRenderer::init()
         {
             indices.push_back(i + 2);
         }
-        
+
     }
 
     glGenBuffers(1, &vboHandle);
@@ -196,7 +202,7 @@ bool CircleRenderer::init()
     return true;
 }
 
-void CircleRenderer::render(const glm::vec2 & p, const glm::vec4 & color, float radius, float minRadius)
+void CircleRenderer::render(const glm::vec2 & p, const glm::vec4 & color, float radius, float minRadius, bool useTex)
 {
     if (!initialized)
     {
@@ -219,13 +225,16 @@ void CircleRenderer::render(const glm::vec2 & p, const glm::vec4 & color, float 
     };
 
     glUseProgram(shaderHandle);
-    
+
     glUniformMatrix4fv(uniformMVPLoc, 1, GL_FALSE, &mvp[0][0]);
     glUniform2fv(uniformCenterLoc, 1, &p[0]);
     glUniform1f(uniformRadiusLoc, radius);
     glUniform1f(uniformMinRadiusLoc, minRadius);
     glUniform4fv(uniformColorLoc, 1, &color[0]);
     glUniform2fv(uniformMapSizeLoc, 1, &client.game->mapSize[0]);
+    glUniform1i(uniformTexLoc, 0);
+    if (useTex) glUniform1f(uniformTexScaleLoc, 1.);
+    else        glUniform1f(uniformTexScaleLoc, 0.);
 
     // Render command lists
 #define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))

@@ -14,6 +14,7 @@
 #include <unordered_set>
 
 #include "gamestart.h"
+#include "fbo.hpp"
 
 class Game;
 class Player;
@@ -70,6 +71,8 @@ class monochrome_client
         unsigned int victoryTime = 0;
         unsigned int victoryLength = 1000 * 10;
         unsigned int victoryRemaining = 0;
+
+        FBO *fbo;
 
         bool init();
 
