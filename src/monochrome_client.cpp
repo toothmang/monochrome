@@ -10,13 +10,11 @@
 #include "circlerenderer.h"
 
 #include <stdio.h>
-<<<<<<< Updated upstream
+
 #include <algorithm>
 #include <functional>
-=======
 
 #include <SDL2/SDL_opengles2.h>
->>>>>>> Stashed changes
 
 ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
@@ -78,8 +76,8 @@ bool monochrome_client::init()
     }
 
     fbo = new FBO(width, height);
-    fbo->bind();
-    fbo->blank();
+    //fbo->bind();
+    //fbo->blank();
     fbo->unbind();
 
     return true;
@@ -132,6 +130,7 @@ void monochrome_client::updateState(State newState)
             break;
         case Playing:
             printf("Starting to play!\n");
+            // fbo->blank(); // Uncomment this to clean up after each round
             newgame();
             break;
         case Victory:
@@ -268,6 +267,9 @@ void monochrome_client::renderLoading()
 
 void monochrome_client::renderPlaying()
 {
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+
     auto & cr = CircleRenderer::get();
 
     static float offsetScale = 0.4f;
@@ -286,15 +288,24 @@ void monochrome_client::renderPlaying()
         cr.render(p.headingPos, color, p.size * offsetScale);
     }
 
-    fbo->unbind();
-    fbo->load();
+    for(const auto & b : game->bullets)
+    {
+        cr.render(b.second.pos, game->colors[b.second.colorId], b.second.size * 0.5);
+    }
 
-    //cr.render(glm::vec2(640., 360.), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), 1200., 0., true);
+    fbo->unbind(); // No longer render to texture
+    fbo->load();   // Render using texture
 
-    glBlitFramebuffer(0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, fbo->colTexID);
+    FSQuad::get().render(glm::vec4(0.2, 0.2, 0.2, 1.0));
 
-    fbo->unbind();
+    fbo->unbind(); // Unload texture so it can be rendered to again next frame!
 
+    // ImGui is INSANELY good for debugging.
+    // ImGui::Begin("DEBUG, Yo!");
+    // ImGui::Image( (ImTextureID)fbo->colTexID, ImVec2(300.,300.));
+    // ImGui::End();
 
     for(const auto & p : game->players)
     {
@@ -334,16 +345,16 @@ void monochrome_client::renderPlaying()
         {
             auto hp = &game->players[humanPlayer];
 
-            ImGui::Text("Player pos: %.2f, %.2f. Heading: %.2f, %.2f", hp->pos.x, hp->pos.y, 
+            ImGui::Text("Player pos: %.2f, %.2f. Heading: %.2f, %.2f", hp->pos.x, hp->pos.y,
                 hp->input.aim.x, hp->input.aim.y);
         }
-        
+
 
         // for(auto & p : game->players)
         // {
         //     if (p.isHuman)
         //     {
-        //         ImGui::Text("Player pos: %.2f, %.2f. Heading: %.2f, %.2f", player->pos.x, player->pos.y, 
+        //         ImGui::Text("Player pos: %.2f, %.2f. Heading: %.2f, %.2f", player->pos.x, player->pos.y,
         //             player->input.aim.x, player->input.aim.y);
         //         break;
         //     }
@@ -413,7 +424,7 @@ void monochrome_client::renderVictory()
 
     ImGui::NewLine();
     ImGui::Text("Winning team population over time");
-    ImGui::PlotLines("", 
+    ImGui::PlotLines("",
         [](void *data, int idx)
         {
             if (auto vs = (Game::ColorStat*)data)
@@ -421,8 +432,8 @@ void monochrome_client::renderVictory()
                 return (float)vs[idx].players;
             }
             return 0.0f;
-        }, 
-        (void*)game->victorStats.data(), (int)game->victorStats.size(), 0, nullptr, FLT_MAX, FLT_MAX, 
+        },
+        (void*)game->victorStats.data(), (int)game->victorStats.size(), 0, nullptr, FLT_MAX, FLT_MAX,
         ImVec2(500, 500));
 
     ImGui::End();
@@ -495,7 +506,7 @@ void mainLoop()
             default:
                 break;
         }
-        
+
     }
     ImGui_ImplSdl_NewFrame(client.window);
 
