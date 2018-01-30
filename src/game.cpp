@@ -8,6 +8,27 @@
 
 #include <stdio.h>
 
+// Given hue,sat,val in [0,1], return r,g,b in [0,1] as a vec3
+glm::vec3 hsv2rgb(float hue, float sat, float val) {
+    float c = val * sat;
+    float m = val - c;
+
+    int   phase   = hue * 6.0; // hue / 60 works if you want hue in [0,360)
+    float phase_r = hue * 6.0 - phase;
+
+    glm::vec3 ret(m);
+
+    if (phase == 6 ||
+        phase == 0) { ret.r += c;  ret.g +=       phase_r  * c; }
+    if (phase == 1) { ret.g += c;  ret.r += (1. - phase_r) * c; }
+    if (phase == 2) { ret.g += c;  ret.b +=       phase_r  * c; }
+    if (phase == 3) { ret.b += c;  ret.g += (1. - phase_r) * c; }
+    if (phase == 4) { ret.b += c;  ret.r +=       phase_r  * c; }
+    if (phase == 5) { ret.r += c;  ret.b += (1. - phase_r) * c; }
+
+    return ret;
+}
+
 glm::vec4 genColor()
 {
     glm::vec3 bc = glm::linearRand(glm::vec3(0.0f), glm::vec3(1.0f));
@@ -25,7 +46,11 @@ void Game::begin()
     for(int i = 0; i < numBots; i++)
     {
         bool badColor = true;
-        glm::vec4 bc = genColor();
+
+        float h = glm::linearRand(0.0f, 1.0f);
+        float s = glm::linearRand(0.0f, 1.0f);
+        float v = glm::linearRand(0.0f, 1.0f);
+        glm::vec4 bc = glm::vec4(hsv2rgb(h, s, v), 1.0f);
 
         // while (badColor)
         // {
