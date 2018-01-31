@@ -9,6 +9,46 @@
 float Player::maxSpeed = 100.0f;
 unsigned int Player::fireRate = 1000;
 
+bool Player::changeColor(int newId)
+{
+	if (stunned) return false;
+
+	if (newId == colorId)
+	{
+		if (health > maxHealth)
+		{
+			if (glm::linearRand(0.0f, 1.0f) < (1.0f / health))
+			{
+				health++;
+			}
+		}
+		else
+		{
+			health++;
+		}
+		if (health > stats.highestHealth)
+		{
+			stats.highestHealth = health;
+		}
+		return false;
+	}
+	else
+	{
+		health--;
+		if (health == 0)
+		{
+			lastColorId = colorId;
+			colorId = newId;
+			health = 1;
+			stats.teamSwitches++;
+			stunned = true;
+			stunTime = SDL_GetTicks();
+		}
+		return true;
+	}
+
+}
+
 void Player::update()
 {
     lastInput = input;
@@ -126,7 +166,6 @@ void Player::update()
                 botInput.move = glm::diskRand(1.0f);
             }
 
-
             botInput.firing = glm::linearRand(0.0f, 1.0f) > 0.5f;
 
             botWait = glm::linearRand(botMin, botMax);
@@ -140,24 +179,40 @@ void Player::update()
         input.firing = botInput.firing;
     }
 
+	input.move = glm::clamp(input.move, glm::vec2(-1.0f), glm::vec2(1.0f));
+	input.aim = glm::clamp(input.aim, glm::vec2(-1.0f), glm::vec2(1.0f));
+
     if (glm::length(input.move) < 0.2f)
     {
         input.move = {0.0f, 0.0f};
     }
 
-    vel = input.move * maxSpeed * game->deltaTime;
-    pos = pos + vel;
-    headingPos = pos + input.aim * size;
 
-    if (input.firing)
-    {
-        auto ft = game->requestBullet(this);
+	if (stunned)
+	{
+		if (game->lastUpdateTime - stunTime > stunLength)
+		{
+			stunned = false;
+		}
+	}
+	else
+	{
+		vel = input.move * maxSpeed * game->deltaTime;
+		pos = pos + vel;
+		headingPos = pos + input.aim * size;
 
-        if (ft)
-        {
-            lastFireTime = ft;
-        }
-    }
+		if (input.firing)
+		{
+			auto ft = game->requestBullet(this);
+
+			if (ft)
+			{
+				stats.bulletsFired++;
+				lastFireTime = ft;
+			}
+		}
+	}
+    
 
     // if (isHuman)
     // {

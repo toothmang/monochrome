@@ -6,6 +6,7 @@
 #include "imgui_impl_sdl.h"
 
 #include "glm/gtc/constants.hpp"
+#include "glm/gtc/random.hpp"
 
 #include "circlerenderer.h"
 
@@ -281,17 +282,26 @@ void monochrome_client::renderPlaying()
         glm::vec4 color(0., 0., 0., 1.);
         if (p.colorId < game->colors.size()) color = game->colors[p.colorId];
 
+		auto sizeHealth = p.size + p.health;
+		auto sizeScale = sizeHealth / p.size;
+
         // Render a sphere for the player position
-        cr.render(p.pos, color, p.size, p.minSize);
+        cr.render(p.pos, color, sizeHealth, p.minSize * sizeScale);
 
         // And also render a smaller sphere for their heading
-        cr.render(p.headingPos, color, p.size * offsetScale);
+        cr.render(p.headingPos, color, sizeHealth * offsetScale);
     }
 
     for(const auto & b : game->bullets)
     {
         cr.render(b.second.pos, game->colors[b.second.colorId], b.second.size * 0.5);
     }
+
+	static glm::vec4 tcol = glm::vec4(glm::vec3(glm::linearRand(glm::vec3(0.2f), glm::vec3(1.0f))), 1.0f);
+	for (const auto & t : game->terrain)
+	{
+		cr.render(glm::vec2(t.x, t.y), tcol, t.z, t.z * 0.75f);
+	}
 
     fbo->unbind(); // No longer render to texture
     fbo->load();   // Render using texture
@@ -419,8 +429,11 @@ void monochrome_client::renderVictory()
         updateState(LoadingScreen);
     }
 
-    // ImGui::PlotLines("Round plot", (float*)game->victorStats.data(), (int)game->victorStats.size(),
-    //     sizeof(unsigned int) + sizeof(int), nullptr, FLT_MAX, FLT_MAX, ImVec2(500, 500), sizeof(Game::ColorStat));
+	ImGui::Text("Game stats");
+	ImGui::Text("Highest health: %d", game->stats.players.highestHealth);
+	ImGui::Text("Most team switches: %d", game->stats.players.teamSwitches);
+	ImGui::Text("Most bullets fired: %d", game->stats.players.bulletsFired);
+	ImGui::Text("Most converted: %d", game->stats.players.numConverted);
 
     ImGui::NewLine();
     ImGui::Text("Winning team population over time");

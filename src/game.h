@@ -21,11 +21,23 @@ class Game
                 glm::vec2 avgPos;
         };
 
+		class Stats
+		{
+			public:
+				Player::Stats players;
+		};
+
+		Stats stats;
+
         glm::vec2 mapSize;
+
+		const float mapArea() { return mapSize.x * mapSize.y; }
+
         std::vector<Player> players;
         std::vector<glm::vec4> colors;
         std::map<playerID_t, uint16_t> player_lookup; // playerID -> index in players
         std::map<int, Bullet> bullets;
+		std::vector<glm::vec4> terrain;
         int maxBullets = 10000;
         std::vector<int> deadBullets;
 
@@ -63,9 +75,13 @@ class Game
 
         void begin();
 
+		void generateTerrain();
+
         void end();
         
         void update();
+
+		bool collides(const glm::vec3 & s1, const glm::vec3 & s2);
 
         bool bulletCollide(const Player & p, const Bullet & b);
 

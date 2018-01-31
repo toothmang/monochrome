@@ -1,6 +1,7 @@
 #include "game.h"
 
 #include "glm/gtc/random.hpp"
+#include "glm/gtc/constants.hpp"
 
 #include "SDL2/SDL.h"
 
@@ -42,6 +43,8 @@ void Game::begin()
 
     printf("%s called! Game starting at tick %d\n", __FUNCTION__, gameBeginTime);
 
+	generateTerrain();
+
     // Generate bots
     for(int i = 0; i < numBots; i++)
     {
@@ -49,7 +52,7 @@ void Game::begin()
 
         float h = glm::linearRand(0.0f, 1.0f);
         float s = glm::linearRand(0.0f, 1.0f);
-        float v = glm::linearRand(0.0f, 1.0f);
+        float v = glm::linearRand(0.3f, 1.0f);
         glm::vec4 bc = glm::vec4(hsv2rgb(h, s, v), 1.0f);
 
         // while (badColor)
@@ -68,6 +71,53 @@ void Game::begin()
     }
 
     colorStats.resize(colors.size());
+
+	auto areaPerPlayer = mapArea() / players.size();
+
+	auto sideArea = sqrt(areaPerPlayer);
+
+	auto numCols = mapSize.x / sideArea;
+	auto numRows = mapSize.y / sideArea;
+
+	auto sqr = glm::vec2(sideArea);
+
+	int pi = 0;
+	for (int i = 0; i < numRows; i++)
+	{
+		float y = i * sideArea;
+		for (int j = 0; j < numCols; j++)
+		{
+			float x = j * sideArea;
+
+			auto offset = glm::linearRand(glm::vec2(0.0f), sqr);
+
+			players[pi++].pos = glm::vec2(x, y) + offset;
+		}
+	}
+}
+
+void Game::generateTerrain()
+{
+	auto ma = mapArea();
+
+	auto pa = (numBots + 4) * glm::pow(playerSize * 0.5f, 2.0f) * glm::pi<float>();
+
+	auto ta = (ma - pa) * 0.03f;
+
+	auto tp = ta / ma;
+
+	printf("Generating terrain as %.2f percent of map\n", tp);
+
+	int numTerrains = glm::linearRand(0, 100);
+
+	float areaPerTerrain = glm::sqrt(ta / numTerrains);
+
+	for (int i = 0; i < numTerrains; i++)
+	{
+		terrain.push_back(glm::vec4(
+			glm::vec3(glm::linearRand(glm::vec2(0.0f), mapSize), glm::linearRand(areaPerTerrain * 0.5f, areaPerTerrain * 1.5f)),
+			glm::linearRand(100.0f, 200.0f)));
+	}
 }
 
 void Game::end()
@@ -77,6 +127,27 @@ void Game::end()
     finished = true;
 
     victorStats.clear();
+
+	for (auto & p : players)
+	{
+		if (p.stats.bulletsFired > stats.players.bulletsFired)
+		{
+			stats.players.bulletsFired = p.stats.bulletsFired;
+		}
+		if (p.stats.highestHealth > stats.players.highestHealth)
+		{
+			stats.players.highestHealth = p.stats.highestHealth;
+		}
+		if (p.stats.numConverted > stats.players.numConverted)
+		{
+			stats.players.numConverted = p.stats.numConverted;
+		}
+		if (p.stats.teamSwitches > stats.players.teamSwitches)
+		{
+			stats.players.teamSwitches = p.stats.teamSwitches;
+		}
+	}
+
 
     for(auto & ms : matchStats)
     {
@@ -91,7 +162,7 @@ void Game::update()
     auto t = SDL_GetTicks();
     auto dt = t - lastUpdateTime;
 
-    deltaTime = (float)(t - lastUpdateTime) / 1000.0f;
+	deltaTime = (float)(t - lastUpdateTime) / 1000.0f;
 
     for(const auto & db : deadBullets)
     {
@@ -117,15 +188,52 @@ void Game::update()
         
         if (constrainPos(b.second.pos, b.second.size))
         {
-            deadBullets.push_back(b.first);
+			if (glm::linearRand(0.0f, 1.0f) > 0.75f)
+			{
+				auto bpos = b.second.pos;
+
+				if (bpos.x == 0.0f || bpos.x == mapSize.x)
+				{
+					b.second.vel.x = -b.second.vel.x;
+				}
+				else if (bpos.y == 0.0f || bpos.x == mapSize.y)
+				{
+					b.second.vel.y = -b.second.vel.y;
+				}
+			}
+			else
+			{
+				deadBullets.push_back(b.first);
+				continue;
+			}
         }
+
+		glm::vec3 b3(b.second.pos, b.second.size);
+		for (auto & t : terrain)
+		{
+			if (collides(t, b3))
+			{
+				t.z -= 1;
+
+				if (t.z < 0.0f)
+				{
+					t = glm::vec4(0.0f);
+				}
+				deadBullets.push_back(b.first);
+				continue;
+			}
+		}
 
         for(auto & p : players)
         {
             if (bulletCollide(p, b.second) && !finished)
             {
                 deadBullets.push_back(b.first);
-                p.colorId = b.second.colorId;
+				if (p.changeColor(b.second.colorId))
+				{
+					players[b.second.playerId].stats.numConverted++;
+				}
+				continue;
             }
         }
     }
@@ -191,9 +299,15 @@ void Game::update()
     lastUpdateTime = t;
 }
 
+bool Game::collides(const glm::vec3 & s1, const glm::vec3 & s2)
+{
+	return glm::length(s1.xy - s2.xy) < (s1.z + s2.z);
+}
+
+
 bool Game::bulletCollide(const Player & p, const Bullet & b)
 {
-    if (p.colorId == b.colorId) return false;
+	if (p.colorId == b.colorId && p.id == b.playerId) return false;
     return glm::length(p.pos - b.pos) < (p.size + b.size);
 }
 
