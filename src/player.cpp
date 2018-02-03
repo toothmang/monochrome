@@ -41,8 +41,8 @@ bool Player::changeColor(int newId)
 			colorId = newId;
 			health = 1;
 			stats.teamSwitches++;
-			stunned = true;
-			stunTime = SDL_GetTicks();
+			/*stunned = true;
+			stunTime = SDL_GetTicks();*/
 		}
 		return true;
 	}

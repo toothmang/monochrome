@@ -47,6 +47,10 @@ class Player
         timestamp_t timestamp = 0;
         float size = 15.0f;
         float minSize = 0.0f;
+		float healthScale = 3.0f;
+
+		float healthSize() const { return size + (health * healthScale); }
+		float healthPercent() const { return healthSize() / size; }
 
 
         unsigned int lastUpdate = 0;

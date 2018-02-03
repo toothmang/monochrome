@@ -19,6 +19,8 @@
 
 ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
+glm::vec4 terrainColor = glm::vec4(0.0f);
+
 bool monochrome_client::init()
 {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0)
@@ -282,14 +284,13 @@ void monochrome_client::renderPlaying()
         glm::vec4 color(0., 0., 0., 1.);
         if (p.colorId < game->colors.size()) color = game->colors[p.colorId];
 
-		auto sizeHealth = p.size + p.health;
-		auto sizeScale = sizeHealth / p.size;
+		auto ps = p.healthSize();
 
         // Render a sphere for the player position
-        cr.render(p.pos, color, sizeHealth, p.minSize * sizeScale);
+        cr.render(p.pos, color, ps, p.healthPercent() * p.minSize);
 
         // And also render a smaller sphere for their heading
-        cr.render(p.headingPos, color, sizeHealth * offsetScale);
+        cr.render(p.headingPos, color, ps * offsetScale);
     }
 
     for(const auto & b : game->bullets)
@@ -297,10 +298,9 @@ void monochrome_client::renderPlaying()
         cr.render(b.second.pos, game->colors[b.second.colorId], b.second.size * 0.5);
     }
 
-	static glm::vec4 tcol = glm::vec4(glm::vec3(glm::linearRand(glm::vec3(0.2f), glm::vec3(1.0f))), 1.0f);
 	for (const auto & t : game->terrain)
 	{
-		cr.render(glm::vec2(t.x, t.y), tcol, t.z, t.z * 0.75f);
+		cr.render(glm::vec2(t.x, t.y), terrainColor, t.z, t.z * 0.75f);
 	}
 
     fbo->unbind(); // No longer render to texture
@@ -322,11 +322,13 @@ void monochrome_client::renderPlaying()
         glm::vec4 color(0., 0., 0., 1.);
         if (p.colorId < game->colors.size()) color = game->colors[p.colorId];
 
+		auto ps = p.healthSize();
+
         // Render a sphere for the player position
-        cr.render(p.pos, color, p.size, p.minSize);
+        cr.render(p.pos, color, ps, p.minSize * p.healthPercent());
 
         // And also render a smaller sphere for their heading
-        cr.render(p.headingPos, color, p.size * offsetScale);
+        cr.render(p.headingPos, color, ps * offsetScale);
 
         // If human, highlight them a bit
         if (p.isHuman)
