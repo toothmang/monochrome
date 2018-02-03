@@ -308,7 +308,7 @@ bool Game::collides(const glm::vec3 & s1, const glm::vec3 & s2)
 bool Game::bulletCollide(const Player & p, const Bullet & b)
 {
 	if (p.colorId == b.colorId && p.id == b.playerId) return false;
-    return glm::length(p.pos - b.pos) < (p.size + b.size);
+    return glm::length(p.pos - b.pos) < (p.healthSize() + b.size);
 }
 
 int Game::addHuman()

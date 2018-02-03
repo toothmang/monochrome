@@ -317,6 +317,8 @@ void monochrome_client::renderPlaying()
     // ImGui::Image( (ImTextureID)fbo->colTexID, ImVec2(300.,300.));
     // ImGui::End();
 
+    std::vector<int> humans;
+
     for(const auto & p : game->players)
     {
         glm::vec4 color(0., 0., 0., 1.);
@@ -333,8 +335,16 @@ void monochrome_client::renderPlaying()
         // If human, highlight them a bit
         if (p.isHuman)
         {
-            cr.render(p.pos, glm::vec4(1.0f, 1.0f, 0.0f, 1.0f), p.size * 1.66f, p.size * 1.5f);
+            humans.push_back(p.id);
+            //cr.render(p.pos, glm::vec4(1.0f, 1.0f, 0.0f, 1.0f), p.size * 1.66f, p.size * 1.5f);
         }
+    }
+
+    for(auto & hid : humans)
+    {
+        const auto & p = game->players[hid];
+
+        cr.render(p.pos, glm::vec4(1.0f, 1.0f, 0.0f, 1.0f), p.healthSize() + 10.0f, p.healthSize() + 5.0f);
     }
 
     for(const auto & b : game->bullets)
